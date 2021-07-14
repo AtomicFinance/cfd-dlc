@@ -96,7 +96,7 @@ TransactionController DlcManager::CreateCet(const TxOut& local_output,
   std::sort(outputs_info.begin(), outputs_info.end(), CompareOutputSerialId);
 
   for (size_t i = 0; i < outputs_info.size(); i++) {
-    if (!IsDustOutput(local_output)) {
+    if (!IsDustOutputInfo(outputs_info[i])) {
       cet_tx.AddTxOut(outputs_info[i].script,
                       outputs_info[i].value);
     }
@@ -568,6 +568,10 @@ uint32_t DlcManager::GetTotalInputVSize(const std::vector<TxIn>& inputs) {
 
 bool DlcManager::IsDustOutput(const TxOut& output) {
   return output.GetValue() < DUST_LIMIT;
+}
+
+bool DlcManager::IsDustOutputInfo(const TxOutputInfo& output) {
+  return output.value < DUST_LIMIT;
 }
 
 static uint32_t GetInputsWeight(const std::vector<TxInputInfo>& inputs_info) {

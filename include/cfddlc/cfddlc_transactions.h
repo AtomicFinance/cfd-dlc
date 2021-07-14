@@ -622,6 +622,16 @@ class CFD_DLC_EXPORT DlcManager {
   static bool IsDustOutput(const TxOut& output);
 
   /**
+   * @brief Determines whether the given output is a dust output at the given
+   * fee rate.
+   *
+   * @param output the output.
+   * @return true if the output is dust.
+   * @return false otherwise.
+   */
+  static bool IsDustOutputInfo(const TxOutputInfo& output);
+
+  /**
    * @brief Get a raw signature for the given transaction.
    *
    * @param transaction the transaction to get a signature for.
