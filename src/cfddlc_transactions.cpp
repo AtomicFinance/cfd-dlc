@@ -8,6 +8,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <iostream>
 
 #include "cfd/cfd_transaction.h"
 #include "cfdcore/cfdcore_address.h"
@@ -538,7 +539,23 @@ DlcTransactions DlcManager::CreateDlcTransactions(
 
   // the given lock time.
   auto fund_tx_id = fund_tx.GetTransaction().GetTxid();
+
+  std::vector<uint64_t> change_serial_ids = {
+    fund_output_serial_id,
+    local_params.change_serial_id,
+    remote_params.change_serial_id
+  };
+
+  std::sort(change_serial_ids.begin(), change_serial_ids.end());
+
   uint32_t fund_vout = 0;
+
+  for (size_t i = 0; i < change_serial_ids.size(); i++) {
+    if (change_serial_ids[i] == fund_output_serial_id) {
+      fund_vout = static_cast<uint32_t>(i);
+      break;
+    }
+  }
 
   auto cets =
       CreateCets(fund_tx_id, fund_vout, local_params.final_script_pubkey,

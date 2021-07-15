@@ -136,14 +136,18 @@ const PartyParams LOCAL_PARAMS = {LOCAL_FUND_PUBKEY,
                                   LOCAL_FINAL_ADDRESS.GetLockingScript(),
                                   LOCAL_INPUTS_INFO,
                                   LOCAL_INPUT_AMOUNT,
-                                  LOCAL_COLLATERAL_AMOUNT};
+                                  LOCAL_COLLATERAL_AMOUNT,
+                                  0,
+                                  0};
 
 const PartyParams REMOTE_PARAMS = {REMOTE_FUND_PUBKEY,
                                    REMOTE_CHANGE_ADDRESS.GetLockingScript(),
                                    REMOTE_FINAL_ADDRESS.GetLockingScript(),
                                    REMOTE_INPUTS_INFO,
                                    REMOTE_INPUT_AMOUNT,
-                                   REMOTE_COLLATERAL_AMOUNT};
+                                   REMOTE_COLLATERAL_AMOUNT,
+                                   0,
+                                   0};
 
 const PartyParams LOCAL_PARAMS_SERIAL_ID = {
                                   LOCAL_FUND_PUBKEY,
@@ -190,7 +194,8 @@ const ByteData FUND_TX_WITH_SERIAL_ID_INPUTS_HEX(
     "7a14602975560247304402203655ac5589c11d41cf8f36c19f6e0f1ebecf7781c2db35bb98"
     "cccbec545ab1e10220400bf439532c971bc05bcd50e6f6216b7608481d532be751e48597b2"
     "ebe3d8390121022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b240"
-    "efe400000000");
+    "efe400000000"
+);
 const ByteData FUND_TX_WITH_PREMIUM_HEX(
     "02000000024f601442e48eec22ff3a907c5f5290c6a0d3d08fb869e46ebfbaa9226b6d2683"
     "0000000000ffffffff98bbd477219a151a1daf5377b30e8c5f9fb574783943f33ac523ef07"
@@ -250,16 +255,28 @@ const ByteData REFUND_HEX(
     "210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6"
     "047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae6400000"
     "0");
+const ByteData REFUND_SERIAL_ID_HEX(
+    "020000000001019246862ea34db0833bd4bd9e657d61e2e5447d0438f6f6181d1cd329e8cf"
+    "71c30100000000feffffff0200e1f505000000001600145dedfbf9ea599dd4e3ca6a80b333"
+    "c472fd0b3f6900e1f505000000001600149652d86bedf43ad264362e6e6eba6eb764508127"
+    "0400473044022068eaae53a3f01c0cd6cef5031b62c05688caf69ac152996b3c42421def65"
+    "a5ba022048e64a816eeeab78f30e3472101ea12e5445ec3bb4ec070e3ea75b7ad663f77001"
+    "47304402207d2b3604b4dae8dcadf3734a6ffab65a821b9a8f9eee9c6d75a223f480b864f8"
+    "0220657fe4f5bf82a154122edbf68ac2c26bc463b24c9a0402989d74b6295f0f6311014752"
+    "210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6"
+    "047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae64000000"
+);
 const ByteData REFUND_INPUTS_SERIAL_ID_HEX(
     "0200000000010104c9b6b6e99248184d522d25b03efc469ed15730ef2b1d3cebbc968f0499"
-    "3b7f0000000000feffffff0200e1f505000000001600145dedfbf9ea599dd4e3ca6a80b333"
+    "3b7f0200000000feffffff0200e1f505000000001600145dedfbf9ea599dd4e3ca6a80b333"
     "c472fd0b3f6900e1f505000000001600149652d86bedf43ad264362e6e6eba6eb764508127"
-    "0400473044022032c7daaf2778d1eddb5d5e76665b7f27cc534e7788f6f193b6f4a6920bcd"
-    "bcf602207fa0056d5802ec821013ca080699a714302eb813a93e2dcf301c20c099a4583901"
-    "473044022028cbdf0013e579ac7864c4e0a20bf5f3312a57f72491f6034f8e7feb979aca5e"
-    "02202abf19a3f46ca4ea5b97742d649fe14b7cd2d04ecabb6de9570a81bf6927e0d9014752"
+    "040047304402206b854782f4a7abed563ddad54cbfc30e0fe7dcf42cc2dd86bd9ced57897f"
+    "08d20220356208c0cf30c14953d599feb0e5a9aabf11c36b5897ea5bc885cfa5415e2f1a01"
+    "47304402202886aae45899892a57a7374b23cecf71fdc06501900fc4f77cdfa95977657683"
+    "02206ca1db9835a45120a01f5f09ddc9592b2348c5343186a972ba82f28a49fc98eb014752"
     "210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6"
-    "047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae64000000");
+    "047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae64000000"
+);
 
 const Address PREMIUM_DEST("bcrt1qxyzqgxhnnhwtp9m0n2m9ygqp7zt2lckwvxx4jq");
 const Amount OPTION_PREMIUM = Amount::CreateBySatoshiAmount(100000);
@@ -446,11 +463,11 @@ TEST(DlcManager, CreateDlcTransactions) {
 
   bool is_local_refund_signature_valid = DlcManager::VerifyRefundTxSignature(
       refund_tx, local_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, false, fund_tx_id);
+      FUND_OUTPUT, false, fund_tx_id, 0);
 
   bool is_remote_refund_signature_valid = DlcManager::VerifyRefundTxSignature(
       refund_tx, remote_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, true, fund_tx_id);
+      FUND_OUTPUT, true, fund_tx_id, 0);
 
   auto cets = dlc_transactions.cets;
   auto nb_cet = cets.size();
@@ -742,23 +759,23 @@ TEST(DlcManager, CreateDlcTransactionsWithUniqueSerialId) {
 
   auto local_refund_signature = DlcManager::GetRawRefundTxSignature(
       refund_tx, LOCAL_FUND_PRIVKEY, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, fund_tx_id, 0);
+      FUND_OUTPUT, fund_tx_id, 2);
 
   auto remote_refund_signature = DlcManager::GetRawRefundTxSignature(
       refund_tx, REMOTE_FUND_PRIVKEY, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, fund_tx_id, 0);
+      FUND_OUTPUT, fund_tx_id, 2);
 
   DlcManager::AddSignaturesToRefundTx(
       &refund_tx, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      {local_refund_signature, remote_refund_signature}, fund_tx_id, 0);
+      {local_refund_signature, remote_refund_signature}, fund_tx_id, 2);
 
   bool is_local_refund_signature_valid = DlcManager::VerifyRefundTxSignature(
       refund_tx, local_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, false, fund_tx_id);
+      FUND_OUTPUT, false, fund_tx_id, 2);
 
   bool is_remote_refund_signature_valid = DlcManager::VerifyRefundTxSignature(
       refund_tx, remote_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
-      FUND_OUTPUT, true, fund_tx_id);
+      FUND_OUTPUT, true, fund_tx_id, 2);
 
   auto cets = dlc_transactions.cets;
   auto nb_cet = cets.size();
