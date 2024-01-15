@@ -137,6 +137,7 @@ Script DlcManager::CreateFundTxLockingScript(const Pubkey& local_fund_pubkey,
   return ScriptUtil::CreateMultisigRedeemScript(2, pubkeys);
 }
 
+// refers to public instance
 TransactionController DlcManager::CreateFundTransaction(
     const Pubkey& local_fund_pubkey, const Pubkey& remote_fund_pubkey,
     const Amount& output_amount, const std::vector<TxInputInfo>& local_inputs_info,
@@ -202,6 +203,85 @@ TransactionController DlcManager::CreateFundTransaction(
     if (!IsDustOutput(option_out)) {
       transaction.AddTxOut(option_out.GetLockingScript(),
                            option_out.GetValue());
+    }
+  }
+
+  return transaction;
+}
+
+TransactionController DlcManager::CreateBatchFundTransaction(
+    const std::vector<Pubkey>& local_fund_pubkeys,
+    const std::vector<Pubkey>& remote_fund_pubkeys,
+    const std::vector<Amount>& output_amounts,
+    const std::vector<TxInputInfo>& local_inputs_info,
+    const TxOut& local_change_output,
+    const std::vector<TxInputInfo>& remote_inputs_info,
+    const TxOut& remote_change_output,
+    const std::vector<uint64_t>& output_serial_ids,
+    const uint64_t local_serial_id,
+    const uint64_t remote_serial_id,
+    const uint64_t lock_time,
+    const Address& option_dest,
+    const Amount& option_premium
+) {
+  if (local_fund_pubkeys.size() != remote_fund_pubkeys.size() ||
+      local_fund_pubkeys.size() != output_amounts.size()) {
+    throw CfdException(CfdError::kCfdIllegalArgumentError,
+                       "Number of local pubkeys, remote pubkeys, and output amounts must be equal.");
+  }
+
+  auto transaction = TransactionController(TX_VERSION, lock_time);
+
+  std::vector<TxOutputInfo> outputs_info;
+
+  for (size_t i = 0; i < local_fund_pubkeys.size(); i++) {
+    auto multi_sig_script = CreateFundTxLockingScript(local_fund_pubkeys[i], remote_fund_pubkeys[i]);
+    auto wit_script = ScriptUtil::CreateP2wshLockingScript(multi_sig_script);
+
+    TxOutputInfo fund_output_info = {
+      wit_script,
+      output_amounts[i],
+      output_serial_ids[i],
+    };
+
+    outputs_info.push_back(fund_output_info);
+  }
+
+  TxOutputInfo local_output_info = {
+    local_change_output.GetLockingScript(),
+    local_change_output.GetValue(),
+    local_serial_id
+  };
+  TxOutputInfo remote_output_info = {
+    remote_change_output.GetLockingScript(),
+    remote_change_output.GetValue(),
+    remote_serial_id
+  };
+
+  outputs_info.push_back(local_output_info);
+  outputs_info.push_back(remote_output_info);
+
+  std::sort(outputs_info.begin(), outputs_info.end(), CompareOutputSerialId);
+
+  for (const auto& output_info : outputs_info) {
+    transaction.AddTxOut(output_info.script, output_info.value);
+  }
+
+  std::vector<TxInputInfo> inputs_info;
+  inputs_info.reserve(local_inputs_info.size() + remote_inputs_info.size());
+  inputs_info.insert(inputs_info.end(), local_inputs_info.begin(), local_inputs_info.end());
+  inputs_info.insert(inputs_info.end(), remote_inputs_info.begin(), remote_inputs_info.end());
+
+  std::sort(inputs_info.begin(), inputs_info.end(), CompareSerialId);
+
+  for (const auto& input_info : inputs_info) {
+    transaction.AddTxIn(input_info.input.GetTxid(), input_info.input.GetVout(), input_info.input.GetUnlockingScript());
+  }
+
+  if (option_premium > 0) {
+    TxOut option_out(option_premium, option_dest);
+    if (!IsDustOutput(option_out)) {
+      transaction.AddTxOut(option_out.GetLockingScript(), option_out.GetValue());
     }
   }
 
@@ -531,6 +611,7 @@ DlcTransactions DlcManager::CreateDlcTransactions(
     remote_inputs_info.push_back(input_info);
   }
 
+  // refers to public instance
   auto fund_tx = CreateFundTransaction(
       local_params.fund_pubkey, remote_params.fund_pubkey, fund_output_value,
       local_inputs_info, local_change_output, remote_inputs_info, remote_change_output,

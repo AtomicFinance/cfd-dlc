@@ -228,6 +228,44 @@ class CFD_DLC_EXPORT DlcManager {
       const uint64_t output_serial_id = 0);
 
   /**
+   * @brief Create a batch fund transaction.
+   *
+   * @param local_fund_pubkeys A vector of public keys of the parties that might submit the
+   * transaction.
+   * @param remote_fund_pubkeys A vector of public keys of the counter-parties.
+   * @param output_amounts A vector of amounts to direct to the multisig outputs.
+   * @param local_inputs_info A vector of sets of inputs used for funding by the local parties.
+   * @param local_change_output The change output to the local parties.
+   * @param remote_inputs_info A vector of sets of inputs used for funding by the
+   * counter-parties.
+   * @param remote_change_output The change output to the counter-parties.
+   * @param output_serial_ids A vector of serial ids for the outputs.
+   * @param local_serial_id (optional) Serial id for the local party.
+   * @param remote_serial_id (optional) Serial id for the remote party.
+   * @param lock_time (optional) The lock time to use.
+   * @param option_dest (optional) Destination address for the payment of the option premium.
+   * @param option_premium (optional) Value for the option premium.
+   * @note If option_premium is non zero, the option_dest value is required, or
+   * an exception will be thrown.
+   * @return TransactionController The created fund transaction.
+   */
+  static TransactionController CreateBatchFundTransaction(
+      const std::vector<Pubkey>& local_fund_pubkeys,
+      const std::vector<Pubkey>& remote_fund_pubkeys,
+      const std::vector<Amount>& output_amounts,
+      const std::vector<TxInputInfo>& local_inputs_info,
+      const TxOut& local_change_output,
+      const std::vector<TxInputInfo>& remote_inputs_info,
+      const TxOut& remote_change_output,
+      const std::vector<uint64_t>& output_serial_ids,
+      const uint64_t local_serial_id = 0,
+      const uint64_t remote_serial_id = 0,
+      const uint64_t lock_time = 0,
+      const Address& option_dest = Address(),
+      const Amount& option_premium = Amount::CreateBySatoshiAmount(0)
+  );
+
+  /**
    * @brief Create a Fund Tx Locking Script object
    * @param local_fund_pubkey the public key of the local party.
    * @param remote_fund_pubkey the public key of the remote party.
