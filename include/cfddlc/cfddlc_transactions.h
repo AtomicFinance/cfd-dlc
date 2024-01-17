@@ -159,7 +159,7 @@ struct PartyParams {
  *
  */
 class CFD_DLC_EXPORT DlcManager {
- public:
+public:
   /**
    * @brief Create a Cet object
    *
@@ -170,13 +170,14 @@ class CFD_DLC_EXPORT DlcManager {
    * @param lock_time lock time (optional)
    * @return TransactionController created CET
    */
-  static TransactionController CreateCet(const TxOut& local_output,
-                                         const TxOut& remote_output,
-                                         const Txid& fund_tx_id,
-                                         const uint32_t fund_vout,
-                                         uint32_t lock_time = 0,
-                                         uint64_t local_serial_id = 0,
-                                         uint64_t remote_serial_id = 0);
+  static TransactionController CreateCet(
+      const TxOut &local_output,
+      const TxOut &remote_output,
+      const Txid &fund_tx_id,
+      const uint32_t fund_vout,
+      uint32_t lock_time = 0,
+      uint64_t local_serial_id = 0,
+      uint64_t remote_serial_id = 0);
   /**
    * @brief Create a Cets object
    *
@@ -189,11 +190,14 @@ class CFD_DLC_EXPORT DlcManager {
    * @return TransactionController created CETs
    */
   static std::vector<TransactionController> CreateCets(
-      const Txid& fund_tx_id, const uint32_t fund_vout,
-      const Script& local_final_script_pubkey,
-      const Script& remote_final_script_pubkey,
-      const std::vector<DlcOutcome> outcomes, uint32_t lock_time = 0,
-      uint64_t local_serial_id = 0, uint64_t remote_serial_id = 0);
+      const Txid &fund_tx_id,
+      const uint32_t fund_vout,
+      const Script &local_final_script_pubkey,
+      const Script &remote_final_script_pubkey,
+      const std::vector<DlcOutcome> outcomes,
+      uint32_t lock_time = 0,
+      uint64_t local_serial_id = 0,
+      uint64_t remote_serial_id = 0);
 
   /**
    * @brief Create a Fund Transaction
@@ -217,11 +221,15 @@ class CFD_DLC_EXPORT DlcManager {
    * @return TransactionController the created fund transaction.
    */
   static TransactionController CreateFundTransaction(
-      const Pubkey& local_fund_pubkey, const Pubkey& remote_fund_pubkey,
-      const Amount& output_amount, const std::vector<TxInputInfo>& local_inputs_info,
-      const TxOut& local_change_output, const std::vector<TxInputInfo>& remote_inputs_info,
-      const TxOut& remote_change_output, const Address& option_dest = Address(),
-      const Amount& option_premium = Amount::CreateBySatoshiAmount(0),
+      const Pubkey &local_fund_pubkey,
+      const Pubkey &remote_fund_pubkey,
+      const Amount &output_amount,
+      const std::vector<TxInputInfo> &local_inputs_info,
+      const TxOut &local_change_output,
+      const std::vector<TxInputInfo> &remote_inputs_info,
+      const TxOut &remote_change_output,
+      const Address &option_dest = Address(),
+      const Amount &option_premium = Amount::CreateBySatoshiAmount(0),
       const uint64_t lock_time = 0,
       const uint64_t local_serial_id = 0,
       const uint64_t remote_serial_id = 0,
@@ -230,40 +238,42 @@ class CFD_DLC_EXPORT DlcManager {
   /**
    * @brief Create a batch fund transaction.
    *
-   * @param local_fund_pubkeys A vector of public keys of the parties that might submit the
-   * transaction.
+   * @param local_fund_pubkeys A vector of public keys of the parties that might
+   * submit the transaction.
    * @param remote_fund_pubkeys A vector of public keys of the counter-parties.
-   * @param output_amounts A vector of amounts to direct to the multisig outputs.
-   * @param local_inputs_info A vector of sets of inputs used for funding by the local parties.
+   * @param output_amounts A vector of amounts to direct to the multisig
+   * outputs.
+   * @param local_inputs_info A vector of sets of inputs used for funding by the
+   * local parties.
    * @param local_change_output The change output to the local parties.
-   * @param remote_inputs_info A vector of sets of inputs used for funding by the
-   * counter-parties.
+   * @param remote_inputs_info A vector of sets of inputs used for funding by
+   * the counter-parties.
    * @param remote_change_output The change output to the counter-parties.
    * @param output_serial_ids A vector of serial ids for the outputs.
    * @param local_serial_id (optional) Serial id for the local party.
    * @param remote_serial_id (optional) Serial id for the remote party.
    * @param lock_time (optional) The lock time to use.
-   * @param option_dest (optional) Destination address for the payment of the option premium.
+   * @param option_dest (optional) Destination address for the payment of the
+   * option premium.
    * @param option_premium (optional) Value for the option premium.
    * @note If option_premium is non zero, the option_dest value is required, or
    * an exception will be thrown.
    * @return TransactionController The created fund transaction.
    */
   static TransactionController CreateBatchFundTransaction(
-      const std::vector<Pubkey>& local_fund_pubkeys,
-      const std::vector<Pubkey>& remote_fund_pubkeys,
-      const std::vector<Amount>& output_amounts,
-      const std::vector<TxInputInfo>& local_inputs_info,
-      const TxOut& local_change_output,
-      const std::vector<TxInputInfo>& remote_inputs_info,
-      const TxOut& remote_change_output,
-      const std::vector<uint64_t>& output_serial_ids,
+      const std::vector<Pubkey> &local_fund_pubkeys,
+      const std::vector<Pubkey> &remote_fund_pubkeys,
+      const std::vector<Amount> &output_amounts,
+      const std::vector<TxInputInfo> &local_inputs_info,
+      const TxOut &local_change_output,
+      const std::vector<TxInputInfo> &remote_inputs_info,
+      const TxOut &remote_change_output,
+      const std::vector<uint64_t> &output_serial_ids,
       const uint64_t local_serial_id = 0,
       const uint64_t remote_serial_id = 0,
       const uint64_t lock_time = 0,
-      const Address& option_dest = Address(),
-      const Amount& option_premium = Amount::CreateBySatoshiAmount(0)
-  );
+      const Address &option_dest = Address(),
+      const Amount &option_premium = Amount::CreateBySatoshiAmount(0));
 
   /**
    * @brief Create a Fund Tx Locking Script object
@@ -272,8 +282,8 @@ class CFD_DLC_EXPORT DlcManager {
    *
    * @return Script the multi sig lock script.
    */
-  static Script CreateFundTxLockingScript(const Pubkey& local_fund_pubkey,
-                                          const Pubkey& remote_fund_pubkey);
+  static Script CreateFundTxLockingScript(
+      const Pubkey &local_fund_pubkey, const Pubkey &remote_fund_pubkey);
   /**
    * @brief Create a Refund Transaction
    *
@@ -288,9 +298,13 @@ class CFD_DLC_EXPORT DlcManager {
    * @return TransactionController the refund transaction.
    */
   static TransactionController CreateRefundTransaction(
-      const Script& local_final_address, const Script& remote_final_address,
-      const Amount& local_amount, const Amount& remote_amount,
-      uint32_t lock_time, const Txid& fund_tx_id, uint32_t fund_vout = 0);
+      const Script &local_final_address,
+      const Script &remote_final_address,
+      const Amount &local_amount,
+      const Amount &remote_amount,
+      uint32_t lock_time,
+      const Txid &fund_tx_id,
+      uint32_t fund_vout = 0);
 
   /**
    * @brief Sign a funding transaction input.
@@ -301,11 +315,12 @@ class CFD_DLC_EXPORT DlcManager {
    * @param prev_tx_vout the index of the previous transaction output.
    * @param value the value of the previous transaction output.
    */
-  static void SignFundTransactionInput(TransactionController* fund_transaction,
-                                       const Privkey& privkey,
-                                       const Txid& prev_tx_id,
-                                       uint32_t prev_tx_vout,
-                                       const Amount& value);
+  static void SignFundTransactionInput(
+      TransactionController *fund_transaction,
+      const Privkey &privkey,
+      const Txid &prev_tx_id,
+      uint32_t prev_tx_vout,
+      const Amount &value);
 
   /**
    * @brief Adds a signature for an input of the fund transaction.
@@ -317,8 +332,11 @@ class CFD_DLC_EXPORT DlcManager {
    * @param prev_tx_vout the vout for the input.
    */
   static void AddSignatureToFundTransaction(
-      TransactionController* fund_transaction, const ByteData& signature,
-      const Pubkey& pubkey, const Txid& prev_tx_id, uint32_t prev_tx_vout);
+      TransactionController *fund_transaction,
+      const ByteData &signature,
+      const Pubkey &pubkey,
+      const Txid &prev_tx_id,
+      uint32_t prev_tx_vout);
 
   /**
    * @brief Create an Adaptor Signature for a given cet using the provided
@@ -336,10 +354,13 @@ class CFD_DLC_EXPORT DlcManager {
    * @return AdaptorPair an adaptor signature and its dleq proof.
    */
   static AdaptorPair CreateCetAdaptorSignature(
-      const TransactionController& cet, const SchnorrPubkey& oracle_pubkey,
-      const std::vector<SchnorrPubkey>& oracle_r_values,
-      const Privkey& funding_sk, const Script& funding_script_pubkey,
-      const Amount& fund_output_amount, const std::vector<ByteData256>& msgs);
+      const TransactionController &cet,
+      const SchnorrPubkey &oracle_pubkey,
+      const std::vector<SchnorrPubkey> &oracle_r_values,
+      const Privkey &funding_sk,
+      const Script &funding_script_pubkey,
+      const Amount &fund_output_amount,
+      const std::vector<ByteData256> &msgs);
 
   /**
    * @brief Create a Cet Adaptor Signatures object
@@ -356,12 +377,13 @@ class CFD_DLC_EXPORT DlcManager {
    * DLEq proofs.
    */
   static std::vector<AdaptorPair> CreateCetAdaptorSignatures(
-      const std::vector<TransactionController>& cets,
-      const SchnorrPubkey& oracle_pubkey,
-      const std::vector<SchnorrPubkey>& oracle_r_values,
-      const Privkey& funding_sk, const Script& funding_script_pubkey,
-      const Amount& fund_output_amount,
-      const std::vector<std::vector<ByteData256>>& msgs);
+      const std::vector<TransactionController> &cets,
+      const SchnorrPubkey &oracle_pubkey,
+      const std::vector<SchnorrPubkey> &oracle_r_values,
+      const Privkey &funding_sk,
+      const Script &funding_script_pubkey,
+      const Amount &fund_output_amount,
+      const std::vector<std::vector<ByteData256>> &msgs);
 
   /**
    * @brief Verify that a signature for a fund transaction is valid.
@@ -375,11 +397,13 @@ class CFD_DLC_EXPORT DlcManager {
    * @return true if the signature is valid.
    * @return false if the signature is invalid.
    */
-  static bool VerifyFundTxSignature(const TransactionController& fund_tx,
-                                    const ByteData& signature,
-                                    const Pubkey& pubkey, const Txid& prev_txid,
-                                    uint32_t prev_vout,
-                                    const Amount& input_amount);
+  static bool VerifyFundTxSignature(
+      const TransactionController &fund_tx,
+      const ByteData &signature,
+      const Pubkey &pubkey,
+      const Txid &prev_txid,
+      uint32_t prev_vout,
+      const Amount &input_amount);
 
   /**
    * @brief
@@ -399,11 +423,14 @@ class CFD_DLC_EXPORT DlcManager {
    * @return false
    */
   static bool VerifyCetAdaptorSignature(
-      const AdaptorPair& adaptor_pair, const TransactionController& cet,
-      const Pubkey& pubkey, const SchnorrPubkey& oracle_pubkey,
-      const std::vector<SchnorrPubkey>& oracle_r_values,
-      const Script& funding_script_pubkey, const Amount& fund_output_amount,
-      const std::vector<ByteData256>& msgs);
+      const AdaptorPair &adaptor_pair,
+      const TransactionController &cet,
+      const Pubkey &pubkey,
+      const SchnorrPubkey &oracle_pubkey,
+      const std::vector<SchnorrPubkey> &oracle_r_values,
+      const Script &funding_script_pubkey,
+      const Amount &fund_output_amount,
+      const std::vector<ByteData256> &msgs);
 
   /**
    * @brief Sign a CET transaction using a counter party adaptor signature that
@@ -420,13 +447,15 @@ class CFD_DLC_EXPORT DlcManager {
    * @param fund_vout the vout of the fund output.
    * @param fund_output_amount the value of the fund output.
    */
-  static void SignCet(TransactionController* cet,
-                      const AdaptorSignature& adaptor_sig,
-                      const std::vector<SchnorrSignature>& oracle_signatures,
-                      const Privkey funding_sk,
-                      const Script& funding_script_pubkey,
-                      const Txid& fund_tx_id, uint32_t fund_vout,
-                      const Amount& fund_output_amount);
+  static void SignCet(
+      TransactionController *cet,
+      const AdaptorSignature &adaptor_sig,
+      const std::vector<SchnorrSignature> &oracle_signatures,
+      const Privkey funding_sk,
+      const Script &funding_script_pubkey,
+      const Txid &fund_tx_id,
+      uint32_t fund_vout,
+      const Amount &fund_output_amount);
 
   /**
    * @brief
@@ -446,12 +475,14 @@ class CFD_DLC_EXPORT DlcManager {
    * @return false
    */
   static bool VerifyCetAdaptorSignatures(
-      const std::vector<TransactionController>& cets,
-      const std::vector<AdaptorPair>& signature_and_proofs,
-      const std::vector<std::vector<ByteData256>>& msgs, const Pubkey& pubkey,
-      const SchnorrPubkey& oracle_pubkey,
-      const std::vector<SchnorrPubkey>& oracle_r_value,
-      const Script& funding_script_pubkey, const Amount& fund_output_amount);
+      const std::vector<TransactionController> &cets,
+      const std::vector<AdaptorPair> &signature_and_proofs,
+      const std::vector<std::vector<ByteData256>> &msgs,
+      const Pubkey &pubkey,
+      const SchnorrPubkey &oracle_pubkey,
+      const std::vector<SchnorrPubkey> &oracle_r_value,
+      const Script &funding_script_pubkey,
+      const Amount &fund_output_amount);
 
   /**
    * @brief Get the Raw Refund Tx Signature object
@@ -467,9 +498,12 @@ class CFD_DLC_EXPORT DlcManager {
    * @return ByteData the produced raw signature.
    */
   static ByteData GetRawRefundTxSignature(
-      const TransactionController& refund_tx, const Privkey& privkey,
-      const Script& fund_lockscript, const Amount& input_amount,
-      const Txid& fund_tx_id, const uint32_t fund_vout = 0);
+      const TransactionController &refund_tx,
+      const Privkey &privkey,
+      const Script &fund_lockscript,
+      const Amount &input_amount,
+      const Txid &fund_tx_id,
+      const uint32_t fund_vout = 0);
 
   /**
    * @brief Get the Raw Refund Tx Signature object
@@ -485,9 +519,12 @@ class CFD_DLC_EXPORT DlcManager {
    * @return ByteData the produced raw signature.
    */
   static ByteData GetRawRefundTxSignature(
-      const TransactionController& refund_tx, const Privkey& privkey,
-      const Pubkey& local_fund_pubkey, const Pubkey& remote_fund_pubkey,
-      const Amount& input_amount, const Txid& fund_tx_id,
+      const TransactionController &refund_tx,
+      const Privkey &privkey,
+      const Pubkey &local_fund_pubkey,
+      const Pubkey &remote_fund_pubkey,
+      const Amount &input_amount,
+      const Txid &fund_tx_id,
       const uint32_t fund_vout = 0);
 
   /**
@@ -499,11 +536,12 @@ class CFD_DLC_EXPORT DlcManager {
    * @param fund_tx_id the id of the fund transaction.
    * @param fund_tx_vout the vout of the fund transaction output.
    */
-  static void AddSignaturesToRefundTx(TransactionController* refund_tx,
-                                      const Script& fund_lockscript,
-                                      const std::vector<ByteData>& signatures,
-                                      const Txid& fund_tx_id,
-                                      const uint32_t fund_tx_vout = 0);
+  static void AddSignaturesToRefundTx(
+      TransactionController *refund_tx,
+      const Script &fund_lockscript,
+      const std::vector<ByteData> &signatures,
+      const Txid &fund_tx_id,
+      const uint32_t fund_tx_vout = 0);
 
   /**
    * @brief
@@ -515,12 +553,13 @@ class CFD_DLC_EXPORT DlcManager {
    * @param fund_tx_id the id of the fund transaction.
    * @param fund_tx_vout the vout of the fund transaction output.
    */
-  static void AddSignaturesToRefundTx(TransactionController* refund_tx,
-                                      const Pubkey& local_fund_pubkey,
-                                      const Pubkey& remote_fund_pubkey,
-                                      const std::vector<ByteData>& signatures,
-                                      const Txid& fund_tx_id,
-                                      const uint32_t fund_tx_vout);
+  static void AddSignaturesToRefundTx(
+      TransactionController *refund_tx,
+      const Pubkey &local_fund_pubkey,
+      const Pubkey &remote_fund_pubkey,
+      const std::vector<ByteData> &signatures,
+      const Txid &fund_tx_id,
+      const uint32_t fund_tx_vout);
 
   /**
    * @brief
@@ -537,13 +576,15 @@ class CFD_DLC_EXPORT DlcManager {
    * @return true if the signature is valid.
    * @return false otherwise.
    */
-  static bool VerifyRefundTxSignature(const TransactionController& refund_tx,
-                                      const ByteData& signature,
-                                      const Pubkey& local_fund_pubkey,
-                                      const Pubkey& remote_fund_pubkey,
-                                      const Amount& input_amount,
-                                      bool verify_remote, const Txid& fund_txid,
-                                      uint32_t fund_vout = 0);
+  static bool VerifyRefundTxSignature(
+      const TransactionController &refund_tx,
+      const ByteData &signature,
+      const Pubkey &local_fund_pubkey,
+      const Pubkey &remote_fund_pubkey,
+      const Amount &input_amount,
+      bool verify_remote,
+      const Txid &fund_txid,
+      uint32_t fund_vout = 0);
 
   /**
    * @brief
@@ -558,13 +599,14 @@ class CFD_DLC_EXPORT DlcManager {
    * @return true if the signature is valid.
    * @return false otherwise.
    */
-  static bool VerifyRefundTxSignature(const TransactionController& refund_tx,
-                                      const ByteData& signature,
-                                      const Pubkey& pubkey,
-                                      const Script& lock_script,
-                                      const Amount& input_amount,
-                                      const Txid& fund_txid,
-                                      uint32_t fund_vout = 0);
+  static bool VerifyRefundTxSignature(
+      const TransactionController &refund_tx,
+      const ByteData &signature,
+      const Pubkey &pubkey,
+      const Script &lock_script,
+      const Amount &input_amount,
+      const Txid &fund_txid,
+      uint32_t fund_vout = 0);
 
   /**
    * @brief Get the Raw Funding Transaction Input Signature object
@@ -578,8 +620,11 @@ class CFD_DLC_EXPORT DlcManager {
    * @return ByteData the produced signature.
    */
   static ByteData GetRawFundingTransactionInputSignature(
-      const TransactionController& funding_transaction, const Privkey& privkey,
-      const Txid& prev_tx_id, uint32_t prev_tx_vout, const Amount& value);
+      const TransactionController &funding_transaction,
+      const Privkey &privkey,
+      const Txid &prev_tx_id,
+      uint32_t prev_tx_vout,
+      const Amount &value);
   /**
    * @brief Create a set of DLC transactions based on the given parameters.
    * Note that proper fee should be computed ahead of using this function.
@@ -601,14 +646,18 @@ class CFD_DLC_EXPORT DlcManager {
    * to establish a DLC.
    */
   static DlcTransactions CreateDlcTransactions(
-      const std::vector<DlcOutcome>& outcomes, const PartyParams& local_params,
-      const PartyParams& remote_params, uint64_t refund_locktime,
-      uint32_t fee_rate, const Address& option_dest = Address(),
-      const Amount& option_premium = Amount::CreateBySatoshiAmount(0),
-      const uint64_t fund_lock_time = 0, const uint64_t cet_lock_time = 0,
+      const std::vector<DlcOutcome> &outcomes,
+      const PartyParams &local_params,
+      const PartyParams &remote_params,
+      uint64_t refund_locktime,
+      uint32_t fee_rate,
+      const Address &option_dest = Address(),
+      const Amount &option_premium = Amount::CreateBySatoshiAmount(0),
+      const uint64_t fund_lock_time = 0,
+      const uint64_t cet_lock_time = 0,
       const uint64_t fund_output_serial_id = 0);
 
- private:
+private:
   /**
    * @brief Create a Fund Transaction object
    *
@@ -631,15 +680,19 @@ class CFD_DLC_EXPORT DlcManager {
    * @return TransactionController the created transaction.
    */
   static TransactionController CreateFundTransaction(
-      const Pubkey& local_fund_pubkey, const Pubkey& remote_fund_pubkey,
-      const Amount& local_input_amount, const Amount& local_collateral_amount,
-      const Amount& remote_input_amount, const Amount& remote_collateral_amount,
-      const std::vector<TxIn>& local_inputs,
-      const Address& local_change_address,
-      const std::vector<TxIn>& remote_inputs,
-      const Address& remote_change_address, uint32_t fee_rate,
-      const Address& option_dest = Address(),
-      const Amount& option_premium = Amount::CreateBySatoshiAmount(0));
+      const Pubkey &local_fund_pubkey,
+      const Pubkey &remote_fund_pubkey,
+      const Amount &local_input_amount,
+      const Amount &local_collateral_amount,
+      const Amount &remote_input_amount,
+      const Amount &remote_collateral_amount,
+      const std::vector<TxIn> &local_inputs,
+      const Address &local_change_address,
+      const std::vector<TxIn> &remote_inputs,
+      const Address &remote_change_address,
+      uint32_t fee_rate,
+      const Address &option_dest = Address(),
+      const Amount &option_premium = Amount::CreateBySatoshiAmount(0));
 
   /**
    * @brief Get the total VSize for the given inputs.
@@ -647,7 +700,7 @@ class CFD_DLC_EXPORT DlcManager {
    * @param inputs the set of inputs to compute the size of.
    * @return uint32_t the size.
    */
-  static uint32_t GetTotalInputVSize(const std::vector<TxIn>& inputs);
+  static uint32_t GetTotalInputVSize(const std::vector<TxIn> &inputs);
 
   /**
    * @brief Determines whether the given output is a dust output at the given
@@ -657,7 +710,7 @@ class CFD_DLC_EXPORT DlcManager {
    * @return true if the output is dust.
    * @return false otherwise.
    */
-  static bool IsDustOutput(const TxOut& output);
+  static bool IsDustOutput(const TxOut &output);
 
   /**
    * @brief Determines whether the given output is a dust output at the given
@@ -667,7 +720,7 @@ class CFD_DLC_EXPORT DlcManager {
    * @return true if the output is dust.
    * @return false otherwise.
    */
-  static bool IsDustOutputInfo(const TxOutputInfo& output);
+  static bool IsDustOutputInfo(const TxOutputInfo &output);
 
   /**
    * @brief Get a raw signature for the given transaction.
@@ -681,9 +734,12 @@ class CFD_DLC_EXPORT DlcManager {
    * @return ByteData the raw signature.
    */
   static ByteData GetRawTxWitSigAllSignature(
-      const TransactionController& transaction, const Privkey& privkey,
-      const Txid& prev_tx_id, uint32_t prev_tx_vout, const Script& lockscript,
-      const Amount& amount);
+      const TransactionController &transaction,
+      const Privkey &privkey,
+      const Txid &prev_tx_id,
+      uint32_t prev_tx_vout,
+      const Script &lockscript,
+      const Amount &amount);
 
   /**
    * @brief Add signature parameters for an input spending from a multi sig
@@ -696,9 +752,11 @@ class CFD_DLC_EXPORT DlcManager {
    * @param signatures the signatures to add.
    */
   static void AddSignaturesForMultiSigInput(
-      TransactionController* transaction, const Txid& prev_tx_id,
-      uint32_t prev_tx_vout, const Script& multisig_script,
-      const std::vector<ByteData>& signatures);
+      TransactionController *transaction,
+      const Txid &prev_tx_id,
+      uint32_t prev_tx_vout,
+      const Script &multisig_script,
+      const std::vector<ByteData> &signatures);
 
   /**
    * @brief Get the Change Output And Fee for a party.
@@ -712,7 +770,8 @@ class CFD_DLC_EXPORT DlcManager {
    * @return std::tuple<TxOut, uint64_t, uint64_t>
    */
   static std::tuple<TxOut, uint64_t, uint64_t> GetChangeOutputAndFees(
-      const PartyParams& params, uint64_t fee_rate,
+      const PartyParams &params,
+      uint64_t fee_rate,
       Amount option_premium = Amount::CreateBySatoshiAmount(0),
       Address premium_dest = Address());
 
@@ -726,9 +785,10 @@ class CFD_DLC_EXPORT DlcManager {
    * @return Pubkey the adaptor point corresponding to the sum of the computed
    * signature points.
    */
-  static Pubkey ComputeAdaptorPoint(const std::vector<ByteData256>& msgs,
-                                    const std::vector<SchnorrPubkey>& r_values,
-                                    const SchnorrPubkey& pubkey);
+  static Pubkey ComputeAdaptorPoint(
+      const std::vector<ByteData256> &msgs,
+      const std::vector<SchnorrPubkey> &r_values,
+      const SchnorrPubkey &pubkey);
 };
 
 }  // namespace dlc
