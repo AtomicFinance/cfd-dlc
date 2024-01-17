@@ -220,9 +220,7 @@ TransactionController DlcManager::CreateBatchFundTransaction(
     const std::vector<uint64_t>& output_serial_ids,
     const uint64_t local_serial_id,
     const uint64_t remote_serial_id,
-    const uint64_t lock_time,
-    const Address& option_dest,
-    const Amount& option_premium
+    const uint64_t lock_time
 ) {
   if (local_fund_pubkeys.size() != remote_fund_pubkeys.size() ||
       local_fund_pubkeys.size() != output_amounts.size()) {
@@ -276,13 +274,6 @@ TransactionController DlcManager::CreateBatchFundTransaction(
 
   for (const auto& input_info : inputs_info) {
     transaction.AddTxIn(input_info.input.GetTxid(), input_info.input.GetVout(), input_info.input.GetUnlockingScript());
-  }
-
-  if (option_premium > 0) {
-    TxOut option_out(option_premium, option_dest);
-    if (!IsDustOutput(option_out)) {
-      transaction.AddTxOut(option_out.GetLockingScript(), option_out.GetValue());
-    }
   }
 
   return transaction;
@@ -649,6 +640,12 @@ DlcTransactions DlcManager::CreateDlcTransactions(
       fund_tx_id, fund_vout);
 
   return {fund_tx, cets, refund_tx};
+}
+
+DlcTransactions DlcManager::CreateBatchDlcTransactions(
+  const std::vector<BatchDlcParams>& batch_dlc_params, uint64_t refund_locktime,
+  uint32_t fee_rate, const uint64_t fund_lock_time = 0, const uint64_t cet_lock_time = 0) {
+  
 }
 
 uint32_t DlcManager::GetTotalInputVSize(const std::vector<TxIn>& inputs) {

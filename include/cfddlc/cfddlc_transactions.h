@@ -81,6 +81,34 @@ struct CFD_DLC_EXPORT DlcOutcome {
  * for this input.
  *
  */
+struct BatchDlcParams {
+  /**
+   * @brief Dlc Outcomes
+   *
+   */
+  std::vector<DlcOutcome> outcomes;
+  /**
+   * @brief Local party params
+   *
+   */
+  PartyParams local_params;
+  /**
+   * @brief Remote party params
+   *
+   */
+  PartyParams remote_params;
+  /**
+   * @brief The fund output serial id
+   *
+   */
+  uint64_t fund_output_serial_id;
+};
+
+/**
+ * @brief Contain a transaction input together with the maximum witness length
+ * for this input.
+ *
+ */
 struct TxInputInfo {
   /**
    * @brief The transaction input.
@@ -153,6 +181,19 @@ struct PartyParams {
    */
   uint64_t change_serial_id;
 };
+
+struct BatchPartyParams {
+  std::vector<Pubkey> fund_pubkeys;
+  Script change_script_pubkey;
+  Script final_script_pubkey;
+  std::vector<TxInputInfo> inputs_info;
+  Amount input_amount;
+  Amount collateral;
+  uint64_t payout_serial_id;
+  uint64_t change_serial_id;
+};
+
+// struct 
 
 /**
  * @brief Class providing utility functions to create DLC transactions.
@@ -260,9 +301,7 @@ class CFD_DLC_EXPORT DlcManager {
       const std::vector<uint64_t>& output_serial_ids,
       const uint64_t local_serial_id = 0,
       const uint64_t remote_serial_id = 0,
-      const uint64_t lock_time = 0,
-      const Address& option_dest = Address(),
-      const Amount& option_premium = Amount::CreateBySatoshiAmount(0)
+      const uint64_t lock_time = 0
   );
 
   /**
@@ -580,6 +619,7 @@ class CFD_DLC_EXPORT DlcManager {
   static ByteData GetRawFundingTransactionInputSignature(
       const TransactionController& funding_transaction, const Privkey& privkey,
       const Txid& prev_tx_id, uint32_t prev_tx_vout, const Amount& value);
+
   /**
    * @brief Create a set of DLC transactions based on the given parameters.
    * Note that proper fee should be computed ahead of using this function.
@@ -607,6 +647,17 @@ class CFD_DLC_EXPORT DlcManager {
       const Amount& option_premium = Amount::CreateBySatoshiAmount(0),
       const uint64_t fund_lock_time = 0, const uint64_t cet_lock_time = 0,
       const uint64_t fund_output_serial_id = 0);
+  
+  static DlcTransactions CreateBatchDlcTransactions(
+      const std::vector<std::vector<DlcOutcome>>& outcomes_list,
+      const BatchPartyParams& local_params,
+      const BatchPartyParams& remote_params,
+      uint64_t refund_locktime,
+      uint32_t fee_rate,
+      const std::vector<uint64_t> fund_output_serial_ids,
+      const uint64_t fund_lock_time = 0,
+      const uint64_t cet_lock_time = 0
+  );
 
  private:
   /**
