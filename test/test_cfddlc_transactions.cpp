@@ -32,6 +32,7 @@ using cfd::core::TxIn;
 using cfd::core::TxOut;
 using cfd::core::WitnessVersion;
 
+using cfd::dlc::BatchPartyParams;
 using cfd::dlc::DlcManager;
 using cfd::dlc::DlcOutcome;
 using cfd::dlc::PartyParams;
@@ -88,8 +89,8 @@ const Amount LOCAL_COLLATERAL_AMOUNT = Amount::CreateBySatoshiAmount(100000000);
 const Amount REMOTE_COLLATERAL_AMOUNT =
   Amount::CreateBySatoshiAmount(100000000);
 const Amount FUND_OUTPUT = Amount::CreateBySatoshiAmount(200000170);
-const Amount FUND_OUTPUT1 = Amount::CreateBySatoshiAmount(100000085);
-const Amount FUND_OUTPUT2 = Amount::CreateBySatoshiAmount(100000085);
+const Amount FUND_OUTPUT1 = Amount::CreateBySatoshiAmount(200000168);
+const Amount FUND_OUTPUT2 = Amount::CreateBySatoshiAmount(200000168);
 const Amount WIN_AMOUNT = Amount::CreateBySatoshiAmount(199900000);
 const Amount LOSE_AMOUNT = Amount::CreateBySatoshiAmount(100000);
 const std::vector<TxInputInfo> LOCAL_INPUTS_INFO = {TxInputInfo{
@@ -135,10 +136,20 @@ const Address LOCAL_FINAL_ADDRESS(
   WitnessVersion::kVersion0,
   Privkey("0000000000000000000000000000000000000000000000000000000000000007")
     .GeneratePubkey());
+const Address LOCAL_FINAL_ADDRESS2(
+  NetType::kRegtest,
+  WitnessVersion::kVersion0,
+  Privkey("0000000000000000000000000000000000000000000000000000000000000009")
+    .GeneratePubkey());
 const Address REMOTE_FINAL_ADDRESS(
   NetType::kRegtest,
   WitnessVersion::kVersion0,
   Privkey("0000000000000000000000000000000000000000000000000000000000000008")
+    .GeneratePubkey());
+const Address REMOTE_FINAL_ADDRESS2(
+  NetType::kRegtest,
+  WitnessVersion::kVersion0,
+  Privkey("0000000000000000000000000000000000000000000000000000000000000010")
     .GeneratePubkey());
 
 const PartyParams LOCAL_PARAMS = {
@@ -181,6 +192,28 @@ const PartyParams REMOTE_PARAMS_SERIAL_ID = {
   2332,
   2039};
 
+const BatchPartyParams LOCAL_BATCH_PARAMS = {
+  {LOCAL_FUND_PUBKEY, LOCAL_FUND_PUBKEY2},
+  LOCAL_CHANGE_ADDRESS.GetLockingScript(),
+  {LOCAL_FINAL_ADDRESS.GetLockingScript(),
+   LOCAL_FINAL_ADDRESS2.GetLockingScript()},
+  LOCAL_INPUTS_INFO,
+  LOCAL_INPUT_AMOUNT,
+  {LOCAL_COLLATERAL_AMOUNT, LOCAL_COLLATERAL_AMOUNT},
+  {0, 0},
+  0};
+
+const BatchPartyParams REMOTE_BATCH_PARAMS = {
+  {REMOTE_FUND_PUBKEY, REMOTE_FUND_PUBKEY2},
+  REMOTE_CHANGE_ADDRESS.GetLockingScript(),
+  {REMOTE_FINAL_ADDRESS.GetLockingScript(),
+   REMOTE_FINAL_ADDRESS2.GetLockingScript()},
+  REMOTE_INPUTS_INFO,
+  REMOTE_INPUT_AMOUNT,
+  {REMOTE_COLLATERAL_AMOUNT, REMOTE_COLLATERAL_AMOUNT},
+  {0, 0},
+  0};
+
 const ByteData FUND_TX_HEX(
   "020000000001024f601442e48eec22ff3a907c5f5290c6a0d3d08fb869e46ebfbaa9226b6d"
   "26830000000000ffffffff98bbd477219a151a1daf5377b30e8c5f9fb574783943f33ac523"
@@ -195,19 +228,19 @@ const ByteData FUND_TX_HEX(
   "5cbfdd1d012103fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a146029"
   "755600000000");
 const ByteData BATCH_FUND_TX_HEX(
-  "020000000001024f601442e48eec22ff3a907c5f5290c6a0d3d08fb869e46ebfbaa9226b6d"
-  "26830000000000ffffffff98bbd477219a151a1daf5377b30e8c5f9fb574783943f33ac523"
-  "ef072fa292bc0000000000ffffffff0455e1f505000000002200209b984c7bae3efddc3a3f"
-  "0a20ff81bfe89ed1fe07ff13e562149ee654bed845db2d10102401000000160014fa3629f3"
-  "060b6c1a5a365c30bf66fa00f155cb9e2d1010240100000016001465d4d622585baf5151de"
-  "860b1e7af58710f20da255e1f50500000000220020257658f29a324d5c7ab66067a020b9e8"
-  "485d1cf43b6609deba4e35a84d803beb0247304402207a203e8fea18a3d58845fa24bacbc4"
-  "0799f01e284999482788d3a2ae5bbf40cc022006299565af7a01265edf4b126ea5e5ef216f"
-  "4ad98b87f038b9f40b606ee633630121022f8bde4d1a07209355b4a7250a5c5128e88b84bd"
-  "dc619ab7cba8d569b240efe4024730440220778c521260a08b91b8e7d31cdd48d79d79126c"
-  "aec4e151fb1695cfcec2c02dd802205aba8d6f2c2d236f91af3ab94f6105a93c6136df3673"
-  "c9d51f23e06159072449012103fff97bd5755eeea420453a14355235d382f6472f8568a18b"
-  "2f057a146029755600000000");
+  "020000000001024f601442e48eec22ff3a907c5f5290c6a0d3d08fb869e46ebfbaa9226b6d26"
+  "830000000000ffffffff98bbd477219a151a1daf5377b30e8c5f9fb574783943f33ac523ef07"
+  "2fa292bc0000000000ffffffff04a8c2eb0b000000002200209b984c7bae3efddc3a3f0a20ff"
+  "81bfe89ed1fe07ff13e562149ee654bed845dba8c2eb0b00000000220020257658f29a324d5c"
+  "7ab66067a020b9e8485d1cf43b6609deba4e35a84d803bebc32e1a1e01000000160014fa3629"
+  "f3060b6c1a5a365c30bf66fa00f155cb9ec32e1a1e0100000016001465d4d622585baf5151de"
+  "860b1e7af58710f20da2024730440220465b4b4668a72d6ab474148a5e0541963d3b81cca21d"
+  "c633c6c1784dc27c0dfe022003b4bcb22b41ca070b176566282e9699e9d7d68568dea582b207"
+  "14de42ab498d0121022f8bde4d1a07209355b4a7250a5c5128e88b84bddc619ab7cba8d569b2"
+  "40efe40247304402205bc577dfc5830c2f65dd17a01e2bb6f99819a1de0989630ff680d1ae38"
+  "5999d2022075b6fc581115d626cd7f3d27d52361a04e9264dc10b8ce1f429d40a0b829f17901"
+  "2103fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a14602975560000000"
+  "0");
 const ByteData FUND_TX_WITH_SERIAL_ID_INPUTS_HEX(
   "0200000000010298bbd477219a151a1daf5377b30e8c5f9fb574783943f33ac523ef072fa2"
   "92bc0000000000ffffffff4f601442e48eec22ff3a907c5f5290c6a0d3d08fb869e46ebfba"
@@ -281,6 +314,26 @@ const ByteData REFUND_HEX(
   "210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6"
   "047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae6400000"
   "0");
+const ByteData BATCH_REFUND_HEX(
+  "02000000000101f7b125244397e233997929b7baf6e7a94ecf3ee425537481dea9c9ab2b9be5"
+  "d70000000000feffffff0200e1f505000000001600145dedfbf9ea599dd4e3ca6a80b333c472"
+  "fd0b3f6900e1f505000000001600149652d86bedf43ad264362e6e6eba6eb764508127040047"
+  "304402207050b5a85d992b7ac37e3f242b452577ebaad336dd338b9c8d334eb9338840f70220"
+  "47d884d8f92022de3674f1c92914e68d0e6b0b62197aa5f00a5201f79ea9b4c4014730440220"
+  "7107a317a4f2790e5216a39049e324f8cbe1c45222125413d171e63557d7b8d50220367fe84c"
+  "4360b8518ee2a1bf6f12069f00d9513b3ba61e75f35a5bd5dc7e6b1c014752210279be667ef9"
+  "dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6047f9441ed7d6d30"
+  "45406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae64000000");
+const ByteData BATCH_REFUND_HEX2(
+  "02000000000101f7b125244397e233997929b7baf6e7a94ecf3ee425537481dea9c9ab2b9be5"
+  "d70100000000feffffff0200e1f50500000000160014b46abf4d9e1746e33bcc39cea3de876c"
+  "29c4adf300e1f5050000000016001460aa32549d990a09863b8fd4ce611ebd70bb310b040047"
+  "3044022044c2c9c17b0974b8cac4d8942335e3b0d4bc349f6b018dfa9fa63e8751399f1c0220"
+  "6903823f0e3b21508f364ed6824cc440a19825886da44f9fac9033fe96d82281014730440220"
+  "249fccde2c0a1b0033f2e333aff3ab3cdd24a94aaadab75f358717127c285a3802202035a857"
+  "ff73f0b28f5dfc921534e5f81519816e7b4c9cfa3c8b2c1d091c28c4014752210279be667ef9"
+  "dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817982102c6047f9441ed7d6d30"
+  "45406e95c07cd85c778e4b8cef3ca7abac09b95c709ee552ae64000000");
 const ByteData REFUND_SERIAL_ID_HEX(
   "020000000001019246862ea34db0833bd4bd9e657d61e2e5447d0438f6f6181d1cd329e8cf"
   "71c30100000000feffffff0200e1f505000000001600145dedfbf9ea599dd4e3ca6a80b333"
@@ -307,8 +360,7 @@ const ByteData REFUND_INPUTS_SERIAL_ID_HEX(
 const Address PREMIUM_DEST("bcrt1qxyzqgxhnnhwtp9m0n2m9ygqp7zt2lckwvxx4jq");
 const Amount OPTION_PREMIUM = Amount::CreateBySatoshiAmount(100000);
 
-TEST(DlcManager, FundTransactionTest)
-{
+TEST(DlcManager, FundTransactionTest) {
   // Arrange
   auto change = Amount::CreateBySatoshiAmount(4899999789);
   TxOut local_change_output = TxOut(change, LOCAL_CHANGE_ADDRESS);
@@ -366,8 +418,7 @@ TEST(DlcManager, FundTransactionTest)
   EXPECT_EQ(fund_tx.GetHex(), fund_tx2.GetHex());
 }
 
-TEST(DlcManager, BatchFundTransactionTest)
-{
+TEST(DlcManager, BatchFundTransactionTest) {
   // Arrange
   std::vector<Pubkey> local_fund_pubkeys = {
     LOCAL_FUND_PUBKEY, LOCAL_FUND_PUBKEY2};
@@ -376,20 +427,18 @@ TEST(DlcManager, BatchFundTransactionTest)
   std::vector<Amount> output_amounts = {FUND_OUTPUT1, FUND_OUTPUT2};
   std::vector<TxInputInfo> local_inputs_info = {LOCAL_INPUTS_INFO};
   std::vector<TxInputInfo> remote_inputs_info = {REMOTE_INPUTS_INFO};
-  auto change = Amount::CreateBySatoshiAmount(4899999789);
+  auto change = Amount::CreateBySatoshiAmount(4799999683);
   TxOut local_change_output = TxOut(change, LOCAL_CHANGE_ADDRESS);
   TxOut remote_change_output = TxOut(change, REMOTE_CHANGE_ADDRESS);
-  std::vector<uint64_t> output_serial_ids = {0, 1};
+  std::vector<uint64_t> output_serial_ids = {0, 0};
 
   // Act
   auto batch_fund_tx = DlcManager::CreateBatchFundTransaction(
     local_fund_pubkeys, remote_fund_pubkeys, output_amounts, local_inputs_info,
-    local_change_output, remote_inputs_info, remote_change_output,
-    output_serial_ids);
+    local_change_output, remote_inputs_info, remote_change_output);
   auto batch_fund_tx2 = DlcManager::CreateBatchFundTransaction(
     local_fund_pubkeys, remote_fund_pubkeys, output_amounts, local_inputs_info,
-    local_change_output, remote_inputs_info, remote_change_output,
-    output_serial_ids);
+    local_change_output, remote_inputs_info, remote_change_output);
   auto local_utxo_txid = LOCAL_INPUTS[0].GetTxid();
   auto local_utxo_vout = LOCAL_INPUTS[0].GetVout();
   auto remote_utxo_txid = REMOTE_INPUTS[0].GetTxid();
@@ -424,8 +473,8 @@ TEST(DlcManager, BatchFundTransactionTest)
 
   EXPECT_EQ(
     FUND_OUTPUT1, batch_fund_tx.GetTransaction().GetTxOut(0).GetValue());
-  EXPECT_EQ(change, batch_fund_tx.GetTransaction().GetTxOut(1).GetValue());
   EXPECT_EQ(change, batch_fund_tx.GetTransaction().GetTxOut(2).GetValue());
+  EXPECT_EQ(change, batch_fund_tx.GetTransaction().GetTxOut(3).GetValue());
   EXPECT_EQ(
     BATCH_FUND_TX_HEX.GetHex(), batch_fund_tx.GetTransaction().GetHex());
   EXPECT_TRUE(DlcManager::VerifyFundTxSignature(
@@ -437,8 +486,7 @@ TEST(DlcManager, BatchFundTransactionTest)
   EXPECT_EQ(batch_fund_tx.GetHex(), batch_fund_tx2.GetHex());
 }
 
-TEST(DlcManager, CetTest)
-{
+TEST(DlcManager, CetTest) {
   // Arrange
   auto local_payout = Amount::CreateBySatoshiAmount(199900000);
   auto remote_payout = Amount::CreateBySatoshiAmount(100000);
@@ -481,8 +529,7 @@ TEST(DlcManager, CetTest)
   EXPECT_EQ(cet.GetHex(), CET_HEX_SIGNED.GetHex());
 }
 
-TEST(DlcManager, RefundTransactionTest)
-{
+TEST(DlcManager, RefundTransactionTest) {
   // Arrange
   // Act
   auto refund_tx = DlcManager::CreateRefundTransaction(
@@ -511,8 +558,7 @@ TEST(DlcManager, RefundTransactionTest)
     FUND_OUTPUT, true, FUND_TX_ID, 0));
 }
 
-TEST(DlcManager, CreateDlcTransactions)
-{
+TEST(DlcManager, CreateDlcTransactions) {
   // Arrange
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
@@ -620,8 +666,136 @@ TEST(DlcManager, CreateDlcTransactions)
   EXPECT_TRUE(all_valid_cet_pair_batch);
 }
 
-TEST(DlcManager, CreateCetTransactionNotEnoughInputTest)
-{
+TEST(DlcManager, CreateBatchDlcTransactions) {
+  // Arrange
+  std::vector<DlcOutcome> outcomes = {
+    {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
+  std::vector<std::vector<DlcOutcome>> outcomes_batch = {outcomes, outcomes};
+
+  // Act
+  auto dlc_transactions = DlcManager::CreateBatchDlcTransactions(
+    outcomes_batch, LOCAL_BATCH_PARAMS, REMOTE_BATCH_PARAMS, REFUND_LOCKTIME,
+    1);
+  auto fund_tx = dlc_transactions.fund_transaction;
+  DlcManager::SignFundTransactionInput(
+    &fund_tx, LOCAL_INPUT_PRIVKEY, LOCAL_INPUTS[0].GetTxid(), 0,
+    LOCAL_INPUT_AMOUNT);
+  DlcManager::SignFundTransactionInput(
+    &fund_tx, REMOTE_INPUT_PRIVKEY, REMOTE_INPUTS[0].GetTxid(), 0,
+    REMOTE_INPUT_AMOUNT);
+
+  auto local_fund_signature =
+    DlcManager::GetRawFundingTransactionInputSignature(
+      fund_tx, LOCAL_INPUT_PRIVKEY, LOCAL_INPUTS[0].GetTxid(), 0,
+      LOCAL_INPUT_AMOUNT);
+
+  bool is_local_fund_signature_valid = DlcManager::VerifyFundTxSignature(
+    fund_tx, local_fund_signature, LOCAL_INPUT_PUBKEY,
+    LOCAL_INPUTS[0].GetTxid(), 0, LOCAL_INPUT_AMOUNT);
+
+  auto remote_fund_signature =
+    DlcManager::GetRawFundingTransactionInputSignature(
+      fund_tx, REMOTE_INPUT_PRIVKEY, REMOTE_INPUTS[0].GetTxid(), 0,
+      REMOTE_INPUT_AMOUNT);
+
+  bool is_remote_fund_signature_valid = DlcManager::VerifyFundTxSignature(
+    fund_tx, remote_fund_signature, REMOTE_INPUT_PUBKEY,
+    REMOTE_INPUTS[0].GetTxid(), 0, REMOTE_INPUT_AMOUNT);
+
+  auto refund_txs = dlc_transactions.refund_transactions;
+
+  auto fund_tx_id = fund_tx.GetTransaction().GetTxid();
+
+  bool all_valid_refund_signatures = true;
+
+  for (size_t i = 0; i < refund_txs.size(); i++) {
+    auto refund_tx = refund_txs[i];
+    auto fund_vout = i;
+
+    auto local_refund_signature = DlcManager::GetRawRefundTxSignature(
+      refund_tx, LOCAL_FUND_PRIVKEY, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
+      FUND_OUTPUT, fund_tx_id, fund_vout);
+
+    auto remote_refund_signature = DlcManager::GetRawRefundTxSignature(
+      refund_tx, REMOTE_FUND_PRIVKEY, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
+      FUND_OUTPUT, fund_tx_id, fund_vout);
+
+    DlcManager::AddSignaturesToRefundTx(
+      &refund_tx, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
+      {local_refund_signature, remote_refund_signature}, fund_tx_id, fund_vout);
+
+    all_valid_refund_signatures &= DlcManager::VerifyRefundTxSignature(
+      refund_tx, local_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
+      FUND_OUTPUT, false, fund_tx_id, fund_vout);
+
+    all_valid_refund_signatures &= DlcManager::VerifyRefundTxSignature(
+      refund_tx, remote_refund_signature, LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY,
+      FUND_OUTPUT, true, fund_tx_id, fund_vout);
+
+    if (i == 0) {
+      EXPECT_EQ(BATCH_REFUND_HEX.GetHex(), refund_tx.GetHex());
+    } else {
+      EXPECT_EQ(BATCH_REFUND_HEX2.GetHex(), refund_tx.GetHex());
+    }
+  }
+
+  auto cets_list = dlc_transactions.cets_list;
+
+  auto fund_script = DlcManager::CreateFundTxLockingScript(
+    LOCAL_FUND_PUBKEY, REMOTE_FUND_PUBKEY);
+
+  bool all_valid_cet_signatures = true;
+  bool all_valid_cet_pair_batch = true;
+
+  for (auto cets : cets_list) {
+    for (size_t i = 0; i < cets.size(); i++) {
+      auto local_cet_adaptor_pair = DlcManager::CreateCetAdaptorSignature(
+        cets[i], ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, LOCAL_FUND_PRIVKEY,
+        fund_script, FUND_OUTPUT, {MESSAGES_HASH[i][0]});
+      all_valid_cet_signatures &= DlcManager::VerifyCetAdaptorSignature(
+        local_cet_adaptor_pair, cets[i], LOCAL_FUND_PUBKEY, ORACLE_PUBKEY,
+        {ORACLE_R_POINTS[0]}, fund_script, FUND_OUTPUT, {MESSAGES_HASH[i][0]});
+      auto remote_cet_adaptor_pair = DlcManager::CreateCetAdaptorSignature(
+        cets[i], ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, LOCAL_FUND_PRIVKEY,
+        fund_script, FUND_OUTPUT, {MESSAGES_HASH[i][0]});
+      all_valid_cet_signatures &= DlcManager::VerifyCetAdaptorSignature(
+        remote_cet_adaptor_pair, cets[i], LOCAL_FUND_PUBKEY, ORACLE_PUBKEY,
+        {ORACLE_R_POINTS[0]}, fund_script, FUND_OUTPUT, {MESSAGES_HASH[i][0]});
+    }
+
+    auto local_cet_adaptor_pairs = DlcManager::CreateCetAdaptorSignatures(
+      cets, ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, LOCAL_FUND_PRIVKEY,
+      fund_script, FUND_OUTPUT,
+      {{WIN_MESSAGES_HASH[0]}, {LOSE_MESSAGES_HASH[0]}});
+
+    all_valid_cet_pair_batch = DlcManager::VerifyCetAdaptorSignatures(
+      cets, local_cet_adaptor_pairs,
+      {{WIN_MESSAGES_HASH[0]}, {LOSE_MESSAGES_HASH[0]}}, LOCAL_FUND_PUBKEY,
+      ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, fund_script, FUND_OUTPUT);
+
+    auto remote_cet_adaptor_pairs = DlcManager::CreateCetAdaptorSignatures(
+      cets, ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, LOCAL_FUND_PRIVKEY,
+      fund_script, FUND_OUTPUT,
+      {{WIN_MESSAGES_HASH[0]}, {LOSE_MESSAGES_HASH[0]}});
+
+    all_valid_cet_pair_batch &= DlcManager::VerifyCetAdaptorSignatures(
+      cets, remote_cet_adaptor_pairs,
+      {{WIN_MESSAGES_HASH[0]}, {LOSE_MESSAGES_HASH[0]}}, LOCAL_FUND_PUBKEY,
+      ORACLE_PUBKEY, {ORACLE_R_POINTS[0]}, fund_script, FUND_OUTPUT);
+
+    EXPECT_EQ(cets.size(), outcomes.size());
+  }
+
+  EXPECT_EQ(BATCH_FUND_TX_HEX.GetHex(), fund_tx.GetHex());
+  EXPECT_TRUE(is_local_fund_signature_valid);
+  EXPECT_TRUE(is_remote_fund_signature_valid);
+  // EXPECT_EQ(REFUND_HEX.GetHex(), refund_tx.GetHex());
+  EXPECT_TRUE(all_valid_cet_signatures);
+  EXPECT_TRUE(all_valid_refund_signatures);
+  EXPECT_TRUE(all_valid_cet_pair_batch);
+}
+
+TEST(DlcManager, CreateCetTransactionNotEnoughInputTest) {
   // Arrange
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
@@ -641,8 +815,7 @@ TEST(DlcManager, CreateCetTransactionNotEnoughInputTest)
     CfdException);
 }
 
-TEST(DlcManager, FundTransactionWithPremiumTest)
-{
+TEST(DlcManager, FundTransactionWithPremiumTest) {
   // Arrange
   auto local_change = Amount::CreateBySatoshiAmount(4899899758);
   auto remote_change = Amount::CreateBySatoshiAmount(4899999789);
@@ -664,8 +837,7 @@ TEST(DlcManager, FundTransactionWithPremiumTest)
     fund_tx.GetTransaction().GetTxOut(3).GetValue().GetSatoshiValue());
 }
 
-TEST(DlcManager, CreateDlcTransactionsWithPremium)
-{
+TEST(DlcManager, CreateDlcTransactionsWithPremium) {
   // Arrange
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
@@ -688,8 +860,7 @@ TEST(DlcManager, CreateDlcTransactionsWithPremium)
     fund_tx.GetTransaction().GetTxOut(3).GetValue().GetSatoshiValue());
 }
 
-TEST(DlcManager, CreateDlcTransactionsWithPremiumEmptyDestAddressFails)
-{
+TEST(DlcManager, CreateDlcTransactionsWithPremiumEmptyDestAddressFails) {
   // Arrange
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
@@ -702,8 +873,7 @@ TEST(DlcManager, CreateDlcTransactionsWithPremiumEmptyDestAddressFails)
     CfdException);
 }
 
-TEST(DlcManager, AdaptorSigTest)
-{
+TEST(DlcManager, AdaptorSigTest) {
   std::vector<DlcOutcome> payouts = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
   auto dlc_transactions = DlcManager::CreateDlcTransactions(
@@ -735,8 +905,7 @@ TEST(DlcManager, AdaptorSigTest)
   EXPECT_TRUE(is_valid);
 }
 
-TEST(DlcManager, AdaptorSigMultipleNonces)
-{
+TEST(DlcManager, AdaptorSigMultipleNonces) {
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
   auto dlc_transactions = DlcManager::CreateDlcTransactions(
@@ -771,8 +940,7 @@ TEST(DlcManager, AdaptorSigMultipleNonces)
   EXPECT_TRUE(is_valid);
 }
 
-TEST(DlcManager, AdaptorSigMultipleNoncesWithFewerMessagesThanNonces)
-{
+TEST(DlcManager, AdaptorSigMultipleNoncesWithFewerMessagesThanNonces) {
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
   auto dlc_transactions = DlcManager::CreateDlcTransactions(
@@ -807,8 +975,7 @@ TEST(DlcManager, AdaptorSigMultipleNoncesWithFewerMessagesThanNonces)
   EXPECT_TRUE(is_valid);
 }
 
-TEST(DlcManager, AdaptorSigMultipleNoncesWithMoreMessagesThanNoncesFails)
-{
+TEST(DlcManager, AdaptorSigMultipleNoncesWithMoreMessagesThanNoncesFails) {
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
   auto dlc_transactions = DlcManager::CreateDlcTransactions(
@@ -833,8 +1000,7 @@ TEST(DlcManager, AdaptorSigMultipleNoncesWithMoreMessagesThanNoncesFails)
     CfdException);
 }
 
-TEST(DlcManager, CreateDlcTransactionsWithUniqueSerialId)
-{
+TEST(DlcManager, CreateDlcTransactionsWithUniqueSerialId) {
   // Arrange
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
@@ -943,8 +1109,7 @@ TEST(DlcManager, CreateDlcTransactionsWithUniqueSerialId)
   EXPECT_TRUE(all_valid_cet_pair_batch);
 }
 
-TEST(DlcManager, CetTestSerialId)
-{
+TEST(DlcManager, CetTestSerialId) {
   // Arrange
   auto local_payout = Amount::CreateBySatoshiAmount(199900000);
   auto remote_payout = Amount::CreateBySatoshiAmount(100000);

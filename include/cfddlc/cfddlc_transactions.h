@@ -60,6 +60,28 @@ struct CFD_DLC_EXPORT DlcTransactions {
 };
 
 /**
+ * @brief A structure holding the set of transactions that make up a DLC.
+ *
+ */
+struct CFD_DLC_EXPORT BatchDlcTransactions {
+  /**
+   * @brief The fund transaction
+   *
+   */
+  TransactionController fund_transaction;
+  /**
+   * @brief The set of CETs
+   *
+   */
+  std::vector<std::vector<TransactionController>> cets_list;
+  /**
+   * @brief The refund transaction.
+   *
+   */
+  std::vector<TransactionController> refund_transactions;
+};
+
+/**
  * @brief A structure representing a single outcome of a DLC.
  *
  */
@@ -154,12 +176,23 @@ struct PartyParams {
   uint64_t change_serial_id;
 };
 
+struct BatchPartyParams {
+  std::vector<Pubkey> fund_pubkeys;
+  Script change_script_pubkey;
+  std::vector<Script> final_script_pubkeys;
+  std::vector<TxInputInfo> inputs_info;
+  Amount input_amount;
+  std::vector<Amount> collaterals;
+  std::vector<uint64_t> payout_serial_ids;
+  uint64_t change_serial_id;
+};
+
 /**
  * @brief Class providing utility functions to create DLC transactions.
  *
  */
 class CFD_DLC_EXPORT DlcManager {
-public:
+ public:
   /**
    * @brief Create a Cet object
    *
@@ -268,12 +301,10 @@ public:
     const TxOut &local_change_output,
     const std::vector<TxInputInfo> &remote_inputs_info,
     const TxOut &remote_change_output,
-    const std::vector<uint64_t> &output_serial_ids,
+    const uint64_t lock_time = 0,
     const uint64_t local_serial_id = 0,
     const uint64_t remote_serial_id = 0,
-    const uint64_t lock_time = 0,
-    const Address &option_dest = Address(),
-    const Amount &option_premium = Amount::CreateBySatoshiAmount(0));
+    const std::vector<uint64_t> &output_serial_ids = std::vector<uint64_t>());
 
   /**
    * @brief Create a Fund Tx Locking Script object
@@ -625,6 +656,7 @@ public:
     const Txid &prev_tx_id,
     uint32_t prev_tx_vout,
     const Amount &value);
+
   /**
    * @brief Create a set of DLC transactions based on the given parameters.
    * Note that proper fee should be computed ahead of using this function.
@@ -657,7 +689,38 @@ public:
     const uint64_t cet_lock_time = 0,
     const uint64_t fund_output_serial_id = 0);
 
-private:
+  /**
+   * @brief Create a set of DLC transactions based on the given parameters.
+   * Note that proper fee should be computed ahead of using this function.
+   *
+   * @param outcomes the possible outcome values.
+   * @param local_params the parameters for the local party.
+   * @param remote_params the parameters for the remote party.
+   * @param refund_locktime the unix time or block number after which the
+   * refund transaction can be used.
+   * @param fee_rate the fee rate to compute the fees.
+   * @param option_dest (optional) destination address for the payment of the
+   * option premium
+   * @param option_premium (optional) value for the option premium
+   * @param fund_lock_time the lock time to use for the fund transaction
+   * (optional)
+   * @param cet_lock_time the lock time to use for the cet transactions
+   * (optional)
+   * @return DlcTransactions a struct containing the necessary transaction
+   * to establish a DLC.
+   */
+  static BatchDlcTransactions CreateBatchDlcTransactions(
+    const std::vector<std::vector<DlcOutcome>> &outcomes_list,
+    const BatchPartyParams &local_params,
+    const BatchPartyParams &remote_params,
+    uint64_t refund_locktime,
+    uint32_t fee_rate,
+    const uint64_t fund_lock_time = 0,
+    const uint64_t cet_lock_time = 0,
+    const std::vector<uint64_t> &fund_output_serial_ids =
+      std::vector<uint64_t>());
+
+ private:
   /**
    * @brief Create a Fund Transaction object
    *
@@ -774,6 +837,18 @@ private:
     uint64_t fee_rate,
     Amount option_premium = Amount::CreateBySatoshiAmount(0),
     Address premium_dest = Address());
+
+  /**
+   * @brief Get the Change Output And Fee for a party.
+   *
+   * @param params the party parameters
+   * @param fee_rate the fee rate to apply
+   * @note If option_premium is non zero, the premium_dest value is required, or
+   * an exception will be thrown.
+   * @return std::tuple<TxOut, uint64_t, uint64_t>
+   */
+  static std::tuple<TxOut, uint64_t, uint64_t> GetBatchChangeOutputAndFees(
+    const BatchPartyParams &params, uint64_t fee_rate);
 
   /**
    * @brief Computes an adaptor point from a set of messages, r_values and a
