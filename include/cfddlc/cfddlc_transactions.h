@@ -713,7 +713,7 @@ class CFD_DLC_EXPORT DlcManager {
     const std::vector<std::vector<DlcOutcome>> &outcomes_list,
     const BatchPartyParams &local_params,
     const BatchPartyParams &remote_params,
-    uint64_t refund_locktime,
+    std::vector<uint64_t> refund_locktimes,
     uint32_t fee_rate,
     const uint64_t fund_lock_time = 0,
     const uint64_t cet_lock_time = 0,

@@ -671,10 +671,11 @@ TEST(DlcManager, CreateBatchDlcTransactions) {
   std::vector<DlcOutcome> outcomes = {
     {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
   std::vector<std::vector<DlcOutcome>> outcomes_batch = {outcomes, outcomes};
+  std::vector<uint64_t> refund_locktimes = {REFUND_LOCKTIME, REFUND_LOCKTIME};
 
   // Act
   auto dlc_transactions = DlcManager::CreateBatchDlcTransactions(
-    outcomes_batch, LOCAL_BATCH_PARAMS, REMOTE_BATCH_PARAMS, REFUND_LOCKTIME,
+    outcomes_batch, LOCAL_BATCH_PARAMS, REMOTE_BATCH_PARAMS, refund_locktimes,
     1);
   auto fund_tx = dlc_transactions.fund_transaction;
   DlcManager::SignFundTransactionInput(
