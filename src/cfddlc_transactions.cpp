@@ -711,7 +711,7 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
   const std::vector<std::vector<DlcOutcome>> &outcomes_list,
   const BatchPartyParams &local_params,
   const BatchPartyParams &remote_params,
-  uint64_t refund_locktime,
+  std::vector<uint64_t> refund_locktimes,
   uint32_t fee_rate,
   const uint64_t fund_lock_time,
   const uint64_t cet_lock_time,
@@ -866,7 +866,8 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
     auto refund_tx = CreateRefundTransaction(
       local_params.final_script_pubkeys[i],
       remote_params.final_script_pubkeys[i], local_params.collaterals[i],
-      remote_params.collaterals[i], refund_locktime, fund_tx_id, fund_vouts[i]);
+      remote_params.collaterals[i], refund_locktimes[i], fund_tx_id,
+      fund_vouts[i]);
 
     refund_txs.push_back(refund_tx);
   }
