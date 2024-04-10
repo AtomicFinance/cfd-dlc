@@ -764,21 +764,6 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
   auto total_fund_output_value = std::accumulate(
     fund_output_values.begin(), fund_output_values.end(), Amount(0));
 
-  auto total_input_minus_change_and_fees =
-    local_params.input_amount + remote_params.input_amount -
-    local_change_output.GetValue().GetSatoshiValue() -
-    remote_change_output.GetValue().GetSatoshiValue() - local_fund_fees -
-    remote_fund_fees;
-
-  auto fund_input_diff = std::abs(
-    total_fund_output_value.GetSatoshiValue() -
-    total_input_minus_change_and_fees.GetSatoshiValue());
-
-  if (fund_input_diff > static_cast<long long>(outcomes_list.size())) {
-    throw CfdException(
-      CfdError::kCfdInternalError, "Fee computation doesn't match.");
-  }
-
   auto total_collateral = std::accumulate(
                             local_params.collaterals.begin(),
                             local_params.collaterals.end(), Amount(0)) +
@@ -793,10 +778,15 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
     collateral_and_fees.GetSatoshiValue() -
     total_fund_output_value.GetSatoshiValue());
 
-  if (collateral_diff > static_cast<long long>(outcomes_list.size())) {
+  if (collateral_and_fees < total_fund_output_value || collateral_diff > 20) {
+    std::cerr << "collateral_and_fees: "
+              << collateral_and_fees.GetSatoshiValue() << std::endl;
+    std::cerr << "total_fund_output_value: "
+              << total_fund_output_value.GetSatoshiValue() << std::endl;
     throw CfdException(
       CfdError::kCfdInternalError,
-      "Fee computation doesn't match for collateral.");
+      "Fee computation doesn't match for collateral. The values must be within "
+      "20 satoshis of each other.");
   }
 
   std::vector<TxInputInfo> local_inputs_info;
