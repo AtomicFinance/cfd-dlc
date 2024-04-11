@@ -7,3 +7,6 @@ test:
 
 lint:
   ./scripts/lint.sh
+
+build_ios:
+  ./scripts/build_ios.sh
