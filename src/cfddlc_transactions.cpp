@@ -750,8 +750,12 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
   std::tie(remote_change_output, remote_fund_fees, remote_cet_fees) =
     GetBatchChangeOutputAndFees(remote_params, fee_rate);
 
-  auto local_cet_fee = ceil(local_cet_fees / outcomes_list.size());
-  auto remote_cet_fee = ceil(remote_cet_fees / outcomes_list.size());
+  auto local_cet_fee = ceil(
+    static_cast<double>(local_cet_fees) /
+    static_cast<double>(outcomes_list.size()));
+  auto remote_cet_fee = ceil(
+    static_cast<double>(remote_cet_fees) /
+    static_cast<double>(outcomes_list.size()));
 
   std::vector<Amount> fund_output_values;
   for (size_t i = 0; i < local_params.collaterals.size(); i++) {
@@ -778,7 +782,7 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
     collateral_and_fees.GetSatoshiValue() -
     total_fund_output_value.GetSatoshiValue());
 
-  if (collateral_and_fees < total_fund_output_value || collateral_diff > 20) {
+  if (collateral_diff > 20) {
     std::cerr << "collateral_and_fees: "
               << collateral_and_fees.GetSatoshiValue() << std::endl;
     std::cerr << "total_fund_output_value: "
