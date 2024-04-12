@@ -10,3 +10,12 @@ lint:
 
 build_ios:
   ./scripts/build_ios.sh
+
+build_sim:
+  ./scripts/build_sim.sh
+
+ecmult:
+  ./scripts/ecmult.sh
+
+merge:
+  ./scripts/merge.sh
