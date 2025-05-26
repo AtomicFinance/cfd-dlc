@@ -235,3 +235,19 @@ Finally, in case of a unilateral close of the contract, the party closing will n
 ```
 
 Note that you can generate an oracle signature using `DlcUtil::SchnorrSign` function.
+
+## Building for iOS
+
+cp .env.example .env
+
+Add your Apple Team ID to the .env file
+
+Generate build files running the following commands:
+
+```bash
+./scripts/build_ios.sh
+./scripts/build_sim.sh
+./scripts/merge.sh
+```
+
+This will generated a libcfddlc.a which can be used in https://github.com/AtomicFinance/react-native-cfddlc/

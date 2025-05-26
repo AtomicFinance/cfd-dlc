@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 cmake_policy(SET CMP0076 NEW)
 
@@ -168,6 +168,42 @@ add_library(${PROJECT_NAME} SHARED)
 else()
 add_library(${PROJECT_NAME} STATIC)
 endif()
+
+# Set the PRODUCT_BUNDLE_IDENTIFIER for the cfddlc target
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "finance.atomic.gencontext"
+)
+
+# Function to read a .env file and set environment variables
+function(set_env_from_dotenv_file DOTENV_FILE)
+  file(STRINGS ${DOTENV_FILE} LINES)
+  foreach(LINE IN LISTS LINES)
+    if(NOT "${LINE}" MATCHES "^#.*" AND "${LINE}" MATCHES "^[ ]*([^ ]+)[ ]*=[ ]*(.*)")
+      set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
+    endif()
+  endforeach()
+endfunction()
+
+# Path to your .env file
+set(DOTENV_FILE "${CMAKE_SOURCE_DIR}/.env")
+
+# Check if the .env file exists and read it
+if(EXISTS ${DOTENV_FILE})
+  set_env_from_dotenv_file(${DOTENV_FILE})
+  # Attempt to get the development team ID from the environment variable
+  set(ENV_DEVELOPMENT_TEAM_ID $ENV{DEVELOPMENT_TEAM_ID})
+
+  if(NOT "${ENV_DEVELOPMENT_TEAM_ID}" STREQUAL "")
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+      XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${ENV_DEVELOPMENT_TEAM_ID}"
+    )
+  else()
+    message(WARNING "The DEVELOPMENT_TEAM_ID is not set in the .env file.")
+  endif()
+else()
+  message(WARNING "The .env file does not exist. Please create one to set the DEVELOPMENT_TEAM_ID.")
+endif()
+
 target_sources(${PROJECT_NAME}
   PRIVATE
     ${CFDDLC_SOURCES}
