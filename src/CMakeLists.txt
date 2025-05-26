@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 cmake_policy(SET CMP0076 NEW)
 
@@ -170,7 +170,7 @@ add_library(${PROJECT_NAME} STATIC)
 endif()
 
 # Set the PRODUCT_BUNDLE_IDENTIFIER for the cfddlc target
-set_target_properties(gen_context PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
   XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "finance.atomic.gencontext"
 )
 
@@ -194,7 +194,7 @@ if(EXISTS ${DOTENV_FILE})
   set(ENV_DEVELOPMENT_TEAM_ID $ENV{DEVELOPMENT_TEAM_ID})
 
   if(NOT "${ENV_DEVELOPMENT_TEAM_ID}" STREQUAL "")
-    set_target_properties(gen_context PROPERTIES
+    set_target_properties(${PROJECT_NAME} PROPERTIES
       XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${ENV_DEVELOPMENT_TEAM_ID}"
     )
   else()
