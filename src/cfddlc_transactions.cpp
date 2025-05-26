@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "cfd/cfd_transaction.h"
+#include "cfdcore/cfdcore_adaptorsig.h"
 #include "cfdcore/cfdcore_address.h"
 #include "cfdcore/cfdcore_amount.h"
 #include "cfdcore/cfdcore_common.h"
@@ -29,7 +30,7 @@ namespace dlc {
 using cfd::Amount;
 using cfd::Script;
 using cfd::TransactionController;
-using cfd::core::AdaptorUtil;
+using cfd::core::AdaptorSignature;
 using cfd::core::Address;
 using cfd::core::AddressType;
 using cfd::core::ByteData;
@@ -338,7 +339,7 @@ bool DlcManager::VerifyFundTxSignature(
     input_amount, WitnessVersion::kVersion0);
 }
 
-AdaptorPair DlcManager::CreateCetAdaptorSignature(
+AdaptorSignature DlcManager::CreateCetAdaptorSignature(
   const TransactionController &cet,
   const SchnorrPubkey &oracle_pubkey,
   const std::vector<SchnorrPubkey> &oracle_r_values,
@@ -352,10 +353,10 @@ AdaptorPair DlcManager::CreateCetAdaptorSignature(
   auto sig_hash = cet.GetTransaction().GetSignatureHash(
     0, funding_script_pubkey.GetData(), SigHashType(), total_collateral,
     WitnessVersion::kVersion0);
-  return AdaptorUtil::Sign(sig_hash, funding_sk, adaptor_point);
+  return AdaptorSignature::Encrypt(sig_hash, funding_sk, adaptor_point);
 }
 
-std::vector<AdaptorPair> DlcManager::CreateCetAdaptorSignatures(
+std::vector<AdaptorSignature> DlcManager::CreateCetAdaptorSignatures(
   const std::vector<TransactionController> &cets,
   const SchnorrPubkey &oracle_pubkey,
   const std::vector<SchnorrPubkey> &oracle_r_values,
@@ -370,7 +371,7 @@ std::vector<AdaptorPair> DlcManager::CreateCetAdaptorSignatures(
       "Number of cets differ from number of messages");
   }
 
-  std::vector<AdaptorPair> sigs;
+  std::vector<AdaptorSignature> sigs;
   for (size_t i = 0; i < nb; i++) {
     if (oracle_r_values.size() < msgs[i].size()) {
       throw CfdException(
@@ -390,7 +391,7 @@ std::vector<AdaptorPair> DlcManager::CreateCetAdaptorSignatures(
 }
 
 bool DlcManager::VerifyCetAdaptorSignature(
-  const AdaptorPair &adaptor_pair,
+  const AdaptorSignature &adaptor_signature,
   const TransactionController &cet,
   const Pubkey &pubkey,
   const SchnorrPubkey &oracle_pubkey,
@@ -403,14 +404,12 @@ bool DlcManager::VerifyCetAdaptorSignature(
   auto sig_hash = cet.GetTransaction().GetSignatureHash(
     0, funding_script_pubkey.GetData(), SigHashType(), total_collateral,
     WitnessVersion::kVersion0);
-  return AdaptorUtil::Verify(
-    adaptor_pair.signature, adaptor_pair.proof, adaptor_point, sig_hash,
-    pubkey);
+  return adaptor_signature.Verify(sig_hash, pubkey, adaptor_point);
 }
 
 bool DlcManager::VerifyCetAdaptorSignatures(
   const std::vector<TransactionController> &cets,
-  const std::vector<AdaptorPair> &signature_and_proofs,
+  const std::vector<AdaptorSignature> &signature_and_proofs,
   const std::vector<std::vector<ByteData256>> &msgs,
   const Pubkey &pubkey,
   const SchnorrPubkey &oracle_pubkey,
@@ -446,7 +445,7 @@ bool DlcManager::VerifyCetAdaptorSignatures(
 
 void DlcManager::SignCet(
   TransactionController *cet,
-  const AdaptorSignature &adaptor_sig,
+  const AdaptorSignature &adaptor_signature,
   const std::vector<SchnorrSignature> &oracle_signatures,
   const Privkey funding_sk,
   const Script &funding_script_pubkey,
@@ -465,7 +464,7 @@ void DlcManager::SignCet(
       ByteData256(oracle_signatures[i].GetPrivkey().GetData()));
   }
 
-  auto adapted_sig = AdaptorUtil::Adapt(adaptor_sig, adaptor_secret);
+  auto adapted_sig = adaptor_signature.Decrypt(adaptor_secret);
   auto sig_hash = cet->GetTransaction().GetSignatureHash(
     0, funding_script_pubkey.GetData(), SigHashType(), fund_amount,
     WitnessVersion::kVersion0);
@@ -476,11 +475,11 @@ void DlcManager::SignCet(
   if (own_pubkey_hex == pubkeys[0].GetHex()) {
     AddSignaturesForMultiSigInput(
       cet, fund_tx_id, fund_vout, funding_script_pubkey,
-      {own_sig, adapted_sig});
+      std::vector<ByteData>{own_sig, adapted_sig});
   } else if (own_pubkey_hex == pubkeys[1].GetHex()) {
     AddSignaturesForMultiSigInput(
       cet, fund_tx_id, fund_vout, funding_script_pubkey,
-      {adapted_sig, own_sig});
+      std::vector<ByteData>{adapted_sig, own_sig});
   } else {
     throw new CfdException(
       CfdError::kCfdIllegalArgumentError,

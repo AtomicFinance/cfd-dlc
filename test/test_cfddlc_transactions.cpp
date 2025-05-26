@@ -9,7 +9,7 @@
 #include "gtest/gtest.h"
 
 using cfd::Amount;
-using cfd::core::AdaptorUtil;
+using cfd::core::AdaptorSignature;
 using cfd::core::Address;
 using cfd::core::ByteData;
 using cfd::core::ByteData256;
@@ -894,8 +894,8 @@ TEST(DlcManager, AdaptorSigTest) {
     adaptor_pairs[1], cets[1], LOCAL_FUND_PUBKEY, ORACLE_PUBKEY,
     {ORACLE_R_POINTS[0]}, lock_script, fund_amount, {LOSE_MESSAGES_HASH[0]}));
 
-  auto adapted_sig = AdaptorUtil::Adapt(
-    adaptor_pairs[0].signature, ORACLE_SIGNATURES[0].GetPrivkey());
+  auto adapted_sig =
+    adaptor_pairs[0].Decrypt(ORACLE_SIGNATURES[0].GetPrivkey());
 
   auto is_valid = cet0.VerifyInputSignature(
     adapted_sig, LOCAL_FUND_PUBKEY, fund_txid, 0, lock_script, SigHashType(),
@@ -929,8 +929,7 @@ TEST(DlcManager, AdaptorSigMultipleNonces) {
   auto adaptor_secret = ORACLE_SIGNATURES[0].GetPrivkey();
   adaptor_secret = adaptor_secret.CreateTweakAdd(
     ByteData256(ORACLE_SIGNATURES[1].GetPrivkey().GetData()));
-  auto adapted_sig =
-    AdaptorUtil::Adapt(adaptor_pairs[0].signature, adaptor_secret);
+  auto adapted_sig = adaptor_pairs[0].Decrypt(adaptor_secret);
 
   auto is_valid = cet0.VerifyInputSignature(
     adapted_sig, LOCAL_FUND_PUBKEY, fund_txid, 0, lock_script, SigHashType(),
@@ -964,8 +963,7 @@ TEST(DlcManager, AdaptorSigMultipleNoncesWithFewerMessagesThanNonces) {
     LOSE_MESSAGES_HASH_FEWER_MESSAGES));
 
   auto adaptor_secret = ORACLE_SIGNATURES[0].GetPrivkey();
-  auto adapted_sig =
-    AdaptorUtil::Adapt(adaptor_pairs[0].signature, adaptor_secret);
+  auto adapted_sig = adaptor_pairs[0].Decrypt(adaptor_secret);
 
   auto is_valid = cet0.VerifyInputSignature(
     adapted_sig, LOCAL_FUND_PUBKEY, fund_txid, 0, lock_script, SigHashType(),

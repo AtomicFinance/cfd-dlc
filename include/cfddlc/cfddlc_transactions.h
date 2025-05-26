@@ -23,8 +23,6 @@ using cfd::TransactionController;
 using cfd::Txid;
 using cfd::TxIn;
 using cfd::TxOut;
-using cfd::core::AdaptorPair;
-using cfd::core::AdaptorProof;
 using cfd::core::AdaptorSignature;
 using cfd::core::Address;
 using cfd::core::ByteData;
@@ -382,9 +380,9 @@ class CFD_DLC_EXPORT DlcManager {
    * @param fund_output_amount the value of the fund output.
    * @param msgs the set of messages for the outcome corresponding to the given
    * CET.
-   * @return AdaptorPair an adaptor signature and its dleq proof.
+   * @return AdaptorSignature an adaptor signature and its dleq proof.
    */
-  static AdaptorPair CreateCetAdaptorSignature(
+  static AdaptorSignature CreateCetAdaptorSignature(
     const TransactionController &cet,
     const SchnorrPubkey &oracle_pubkey,
     const std::vector<SchnorrPubkey> &oracle_r_values,
@@ -404,10 +402,10 @@ class CFD_DLC_EXPORT DlcManager {
    * @param funding_script_pubkey the script pubkey of the fund output.
    * @param fund_output_amount the value of the fund output.
    * @param msgs the messages for the outcomes corresponding to the given CETs.
-   * @return std::vector<AdaptorPair> a set of signature together with their
-   * DLEq proofs.
+   * @return std::vector<AdaptorSignature> a set of signature together with
+   * their DLEq proofs.
    */
-  static std::vector<AdaptorPair> CreateCetAdaptorSignatures(
+  static std::vector<AdaptorSignature> CreateCetAdaptorSignatures(
     const std::vector<TransactionController> &cets,
     const SchnorrPubkey &oracle_pubkey,
     const std::vector<SchnorrPubkey> &oracle_r_values,
@@ -439,7 +437,8 @@ class CFD_DLC_EXPORT DlcManager {
   /**
    * @brief
    *
-   * @param adaptor_pair the adaptor signature and its DLEq proof to verify.
+   * @param adaptor_signature the adaptor signature and its DLEq proof to
+   * verify.
    * @param cet the transaction to verify the signature against.
    * @param pubkey the public key to verify the signature against.
    * @param oracle_pubkey the public key of the oracle used for the associated
@@ -454,7 +453,7 @@ class CFD_DLC_EXPORT DlcManager {
    * @return false
    */
   static bool VerifyCetAdaptorSignature(
-    const AdaptorPair &adaptor_pair,
+    const AdaptorSignature &adaptor_signature,
     const TransactionController &cet,
     const Pubkey &pubkey,
     const SchnorrPubkey &oracle_pubkey,
@@ -469,7 +468,7 @@ class CFD_DLC_EXPORT DlcManager {
    * generated using the provided private key.
    *
    * @param cet the CET to which the signatures will be added.
-   * @param adaptor_sig the adaptor signature of the counterparty.
+   * @param adaptor_signature the adaptor signature of the counterparty.
    * @param oracle_signatures the set of signatures from the oracle over the
    * corresponding event outcome.
    * @param funding_sk the private key to generate own signature with.
@@ -480,7 +479,7 @@ class CFD_DLC_EXPORT DlcManager {
    */
   static void SignCet(
     TransactionController *cet,
-    const AdaptorSignature &adaptor_sig,
+    const AdaptorSignature &adaptor_signature,
     const std::vector<SchnorrSignature> &oracle_signatures,
     const Privkey funding_sk,
     const Script &funding_script_pubkey,
@@ -507,7 +506,7 @@ class CFD_DLC_EXPORT DlcManager {
    */
   static bool VerifyCetAdaptorSignatures(
     const std::vector<TransactionController> &cets,
-    const std::vector<AdaptorPair> &signature_and_proofs,
+    const std::vector<AdaptorSignature> &signature_and_proofs,
     const std::vector<std::vector<ByteData256>> &msgs,
     const Pubkey &pubkey,
     const SchnorrPubkey &oracle_pubkey,
