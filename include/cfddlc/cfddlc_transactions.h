@@ -121,9 +121,24 @@ struct TxInputInfo {
   uint64_t input_serial_id;
 };
 
+/**
+ * @brief Contains transaction output information with serial ID for sorting.
+ *
+ * This struct holds the script, value, and a randomly chosen serial ID
+ * used for deterministic sorting of transaction outputs.
+ */
 struct TxOutputInfo {
+  /**
+   * @brief The script pubkey for the output.
+   */
   Script script;
+  /**
+   * @brief The value of the output.
+   */
   Amount value;
+  /**
+   * @brief Randomly chosen number used to sort outputs.
+   */
   uint64_t output_serial_id;
 };
 
