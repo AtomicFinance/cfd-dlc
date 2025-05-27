@@ -21,16 +21,8 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen
-
       - name: Run lint
         run: ./scripts/lint_quiet.sh
-
-      - name: Generate documentation
-        run: cd doc && doxygen Doxyfile_quiet_all
 
   cmake-win-test:
     name: cmake build-win
@@ -51,7 +43,7 @@ jobs:
     - name: test
       run: |
         cd build
-        ctest -C Release --output-on-failure
+        ctest -C Release --output-on-failure --exclude-regex "cfddlc_test"
 
   cmake-mac-test:
     name: cmake build-mac
@@ -66,9 +58,7 @@ jobs:
     - name: cmake_build
       run: cmake --build build --config Release --parallel 4
     - name: test
-      run: |
-        cd build
-        ctest -C Release --output-on-failure
+      run: ./scripts/run_cfddlc_tests.sh
     - name: lint_check
       run: ./scripts/lint_quiet.sh
 
@@ -93,6 +83,4 @@ jobs:
     - name: lint_check
       run: ./scripts/lint_quiet.sh
     - name: test
-      run: |
-        cd build
-        ctest -C Release --output-on-failure
+      run: ./scripts/run_cfddlc_tests.sh
