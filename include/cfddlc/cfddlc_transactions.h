@@ -176,6 +176,13 @@ struct PartyParams {
   uint64_t change_serial_id;
 };
 
+/**
+ * @brief Parameters for batch DLC transactions.
+ *
+ * This struct contains the parameters needed for creating batch DLC
+ * transactions, including funding public keys, scripts, input information, and
+ * collateral amounts.
+ */
 struct BatchPartyParams {
   std::vector<Pubkey> fund_pubkeys;
   Script change_script_pubkey;
