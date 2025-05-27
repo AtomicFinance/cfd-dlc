@@ -6,12 +6,15 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+env:
+  CMAKE_VERSION: 3.17.2
+
 jobs:
   lint:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -29,131 +32,67 @@ jobs:
       - name: Generate documentation
         run: cd doc && doxygen Doxyfile_quiet_all
 
-  build:
+  cmake-win-test:
+    name: cmake build-win
+    runs-on: windows-2019
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-latest, macos-self-hosted]
-        include:
-          - os: ubuntu-22.04
-            cmake_generator: "Unix Makefiles"
-            build_tool: "make"
-          - os: windows-latest
-            cmake_generator: "Visual Studio 17 2022"
-            build_tool: "msbuild"
-          - os: macos-self-hosted
-            cmake_generator: "Unix Makefiles"
-            build_tool: "make"
-    
-    runs-on: ${{ matrix.os }}
-    
+        generator: ['Visual Studio 16 2019', 'MSYS Makefiles']
+        shared: [on, off]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v2
+    - name: cmake_version
+      run: cmake --version
+    - name: cmake_configure
+      run: cmake -S . -B build -G "${{ matrix.generator }}" -DENABLE_SHARED=${{ matrix.shared }} -DENABLE_TESTS=on -DCMAKE_BUILD_TYPE=Release
+    - name: cmake_build
+      run: cmake --build build --config Release --parallel 4
+    - name: test
+      run: |
+        cd build
+        ctest -C Release --output-on-failure
 
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential
+  cmake-mac-test:
+    name: cmake build-mac
+    runs-on: self-hosted
 
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-          refreshenv
-
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'macos-self-hosted'
-        run: |
-          # Assuming cmake is already installed on self-hosted runner
-          # If not, uncomment the following line:
-          # brew install cmake
-
-      - name: Configure CMake (Unix)
-        if: matrix.os != 'windows-latest'
-        run: cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
-
-      - name: Configure CMake (Windows)
-        if: matrix.os == 'windows-latest'
-        run: cmake -DCMAKE_BUILD_TYPE=Release -S . -B build -G "Visual Studio 17 2022"
-
-      - name: Build (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd build
-          make -j 4
-
-      - name: Build (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd build
-          cmake --build . --config Release --parallel 4
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-${{ matrix.os }}
-          path: build/
-          retention-days: 1
-
-  test:
-    needs: build
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, windows-latest, macos-self-hosted]
-    
-    runs-on: ${{ matrix.os }}
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v2
+    - name: cmake_version
+      run: cmake --version
+    - name: cmake_configure
+      run: cmake -S . -B build -G "Unix Makefiles" -DENABLE_SHARED=on -DCMAKE_BUILD_TYPE=Release
+    - name: cmake_build
+      run: cmake --build build --config Release --parallel 4
+    - name: test
+      run: |
+        cd build
+        ctest -C Release --output-on-failure
+    - name: lint_check
+      run: ./scripts/lint_quiet.sh
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: build-${{ matrix.os }}
-          path: build/
-
-      - name: Make test executable (Unix)
-        if: matrix.os != 'windows-latest'
-        run: chmod +x build/Release/cfddlc_test
-
-      - name: Run tests (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd build/Release
-          ./cfddlc_test
-
-      - name: Run tests (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd build/Release
-          ./cfddlc_test.exe
-
-  coverage:
+  cmake-ubuntu-test:
+    name: cmake build-ubuntu
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        shared: [on, off]
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential lcov
-
-      - name: Run coverage
-        run: ./scripts/run_coverage.sh
-
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report
-          path: ./build_coverage/lcov_cfddlc_output
-          retention-days: 7
-
-      - name: Upload coverage to Codecov (optional)
-        if: github.event_name == 'push'
-        uses: codecov/codecov-action@v3
-        with:
-          directory: ./build_coverage/lcov_cfddlc_output
-          fail_ci_if_error: false 
+    - uses: actions/checkout@v2
+    - name: dump version
+      run: |
+        cmake --version
+        gcc --version
+    - name: cmake_configure
+      run: |
+        cmake -S . -B build -G "Unix Makefiles" -DENABLE_SHARED=${{ matrix.shared }} -DCMAKE_BUILD_TYPE=Release
+    - name: cmake_build
+      run: cmake --build build --config Release --parallel 4
+    - name: lint_check
+      run: ./scripts/lint_quiet.sh
+    - name: test
+      run: |
+        cd build
+        ctest -C Release --output-on-failure
