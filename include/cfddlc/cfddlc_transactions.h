@@ -199,13 +199,35 @@ struct PartyParams {
  * collateral amounts.
  */
 struct BatchPartyParams {
+  /**
+   * @brief The public keys for the fund multisig script
+   *
+   */
   std::vector<Pubkey> fund_pubkeys;
+  /**
+   * @brief The script pubkey for the change output.
+   *
+   */
   Script change_script_pubkey;
+  /**
+   * @brief The script pubkey for the final output.
+   *
+   */
   std::vector<Script> final_script_pubkeys;
+  /**
+   * @brief A list of inputs to fund the contract
+   *
+   */
   std::vector<TxInputInfo> inputs_info;
+  /**
+   * @brief The total value of the provided inputs
+   *
+   */
   Amount input_amount;
-  std::vector<Amount> collaterals;
-  std::vector<uint64_t> payout_serial_ids;
+  /**
+   * @brief The collateral put in the contract by the party
+   *
+   */
   uint64_t change_serial_id;
 };
 
