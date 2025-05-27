@@ -255,6 +255,8 @@ class CFD_DLC_EXPORT DlcManager {
    * @param fund_tx_id the tx id of the funding transaction
    * @param fund_vout the vout of the fund output
    * @param lock_time lock time (optional)
+   * @param local_serial_id serial ID for local output sorting (optional)
+   * @param remote_serial_id serial ID for remote output sorting (optional)
    * @return TransactionController created CET
    */
   static TransactionController CreateCet(
@@ -274,6 +276,8 @@ class CFD_DLC_EXPORT DlcManager {
    * @param remote_final_script_pubkey the script for the remote payout output.
    * @param outcomes the list of possible payouts, one for each possible outcome
    * @param lock_time lock time (optional)
+   * @param local_serial_id serial ID for local output sorting (optional)
+   * @param remote_serial_id serial ID for remote output sorting (optional)
    * @return TransactionController created CETs
    */
   static std::vector<TransactionController> CreateCets(
@@ -293,9 +297,10 @@ class CFD_DLC_EXPORT DlcManager {
    * transaction.
    * @param remote_fund_pubkey the public key of the counter-party.
    * @param output_amount the amount to direct to the multisig output.
-   * @param local_inputs the set of inputs used for funding by the local party.
+   * @param local_inputs_info the set of inputs used for funding by the local
+   * party.
    * @param local_change_output the change output to the local party.
-   * @param remote_inputs the set of inputs used for funding by the
+   * @param remote_inputs_info the set of inputs used for funding by the
    * counter-party.
    * @param remote_change_output the change output to the
    * counter-party.
@@ -303,6 +308,9 @@ class CFD_DLC_EXPORT DlcManager {
    * option premium
    * @param option_premium (optional) value for the option premium
    * @param lock_time (optional) the lock time to use
+   * @param local_serial_id (optional) serial ID for local party sorting
+   * @param remote_serial_id (optional) serial ID for remote party sorting
+   * @param output_serial_id (optional) serial ID for output sorting
    * @note If option_premium is non zero, the premium_dest value is required, or
    * an exception will be thrown.
    * @return TransactionController the created fund transaction.
@@ -336,15 +344,10 @@ class CFD_DLC_EXPORT DlcManager {
    * @param remote_inputs_info A vector of sets of inputs used for funding by
    * the counter-parties.
    * @param remote_change_output The change output to the counter-parties.
-   * @param output_serial_ids A vector of serial ids for the outputs.
+   * @param lock_time (optional) The lock time to use.
    * @param local_serial_id (optional) Serial id for the local party.
    * @param remote_serial_id (optional) Serial id for the remote party.
-   * @param lock_time (optional) The lock time to use.
-   * @param option_dest (optional) Destination address for the payment of the
-   * option premium.
-   * @param option_premium (optional) Value for the option premium.
-   * @note If option_premium is non zero, the option_dest value is required, or
-   * an exception will be thrown.
+   * @param output_serial_ids A vector of serial ids for the outputs.
    * @return TransactionController The created fund transaction.
    */
   static TransactionController CreateBatchFundTransaction(
@@ -728,6 +731,8 @@ class CFD_DLC_EXPORT DlcManager {
    * (optional)
    * @param cet_lock_time the lock time to use for the cet transactions
    * (optional)
+   * @param fund_output_serial_id serial ID for the fund output sorting
+   * (optional)
    * @return DlcTransactions a struct containing the necessary transaction
    * to establish a DLC.
    */
@@ -747,21 +752,19 @@ class CFD_DLC_EXPORT DlcManager {
    * @brief Create a set of DLC transactions based on the given parameters.
    * Note that proper fee should be computed ahead of using this function.
    *
-   * @param outcomes the possible outcome values.
+   * @param outcomes_list the possible outcome values for each DLC.
    * @param local_params the parameters for the local party.
    * @param remote_params the parameters for the remote party.
-   * @param refund_locktime the unix time or block number after which the
-   * refund transaction can be used.
+   * @param refund_locktimes the unix time or block number after which the
+   * refund transactions can be used.
    * @param fee_rate the fee rate to compute the fees.
-   * @param option_dest (optional) destination address for the payment of the
-   * option premium
-   * @param option_premium (optional) value for the option premium
    * @param fund_lock_time the lock time to use for the fund transaction
    * (optional)
    * @param cet_lock_time the lock time to use for the cet transactions
    * (optional)
-   * @return DlcTransactions a struct containing the necessary transaction
-   * to establish a DLC.
+   * @param fund_output_serial_ids serial IDs for the fund outputs (optional)
+   * @return BatchDlcTransactions a struct containing the necessary transactions
+   * to establish batch DLCs.
    */
   static BatchDlcTransactions CreateBatchDlcTransactions(
     const std::vector<std::vector<DlcOutcome>> &outcomes_list,
