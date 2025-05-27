@@ -1,12 +1,14 @@
 # cfd-dlc
 
+Version: 0.0.23
+
 Library for creating, signing and verifying signatures for Discrete Logarithm Contracts (DLC).
 
 ## Building
 
 ### Full build
 
-```
+```bash
 ./scripts/build.sh
 ```
 
