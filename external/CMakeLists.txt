@@ -36,8 +36,8 @@ set(ENABLE_MODULE_SCHNORRSIG "1")
 
 # cfd
 set(TEMPLATE_PROJECT_NAME           cfd)
-set(TEMPLATE_PROJECT_GIT_REPOSITORY https://github.com/cryptogarageinc/cfd.git)
-set(TEMPLATE_PROJECT_GIT_TAG        v0.3.26)
+set(TEMPLATE_PROJECT_GIT_REPOSITORY https://github.com/atomicfinance/cfd.git)
+set(TEMPLATE_PROJECT_GIT_TAG        v0.3.27)
 set(PROJECT_EXTERNAL  "${CMAKE_SOURCE_DIR}/external/${TEMPLATE_PROJECT_NAME}/external")
 set(DIR_PATH "${CFD_ROOT_BINARY_DIR}/${TEMPLATE_PROJECT_NAME}")
 set(DL_PATH "${CFD_ROOT_BINARY_DIR}/external/${TEMPLATE_PROJECT_NAME}/download")
