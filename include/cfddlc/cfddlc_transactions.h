@@ -228,6 +228,16 @@ struct BatchPartyParams {
    * @brief The collateral put in the contract by the party
    *
    */
+  std::vector<Amount> collaterals;
+  /**
+   * @brief Randomly chosen numbers used to sort execution tx outputs
+   *
+   */
+  std::vector<uint64_t> payout_serial_ids;
+  /**
+   * @brief Randomly chosen number used to sort funding tx output
+   *
+   */
   uint64_t change_serial_id;
 };
 
