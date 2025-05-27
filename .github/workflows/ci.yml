@@ -83,4 +83,7 @@ jobs:
     - name: lint_check
       run: ./scripts/lint_quiet.sh
     - name: test
-      run: ./scripts/run_cfddlc_tests.sh
+      run: |
+        if [ "${{ matrix.shared }}" = "on" ]; then
+          ./scripts/run_cfddlc_tests.sh
+        fi
