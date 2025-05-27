@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen
+
+      - name: Run lint
+        run: ./scripts/lint_quiet.sh
+
+      - name: Generate documentation
+        run: cd doc && doxygen Doxyfile_quiet_all
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-self-hosted]
+        include:
+          - os: ubuntu-22.04
+            cmake_generator: "Unix Makefiles"
+            build_tool: "make"
+          - os: windows-latest
+            cmake_generator: "Visual Studio 17 2022"
+            build_tool: "msbuild"
+          - os: macos-self-hosted
+            cmake_generator: "Unix Makefiles"
+            build_tool: "make"
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          refreshenv
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-self-hosted'
+        run: |
+          # Assuming cmake is already installed on self-hosted runner
+          # If not, uncomment the following line:
+          # brew install cmake
+
+      - name: Configure CMake (Unix)
+        if: matrix.os != 'windows-latest'
+        run: cmake -DCMAKE_BUILD_TYPE=Release -S . -B build
+
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: cmake -DCMAKE_BUILD_TYPE=Release -S . -B build -G "Visual Studio 17 2022"
+
+      - name: Build (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd build
+          make -j 4
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build
+          cmake --build . --config Release --parallel 4
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.os }}
+          path: build/
+          retention-days: 1
+
+  test:
+    needs: build
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-self-hosted]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-${{ matrix.os }}
+          path: build/
+
+      - name: Make test executable (Unix)
+        if: matrix.os != 'windows-latest'
+        run: chmod +x build/Release/cfddlc_test
+
+      - name: Run tests (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd build/Release
+          ./cfddlc_test
+
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build/Release
+          ./cfddlc_test.exe
+
+  coverage:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential lcov
+
+      - name: Run coverage
+        run: ./scripts/run_coverage.sh
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: ./build_coverage/lcov_cfddlc_output
+          retention-days: 7
+
+      - name: Upload coverage to Codecov (optional)
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./build_coverage/lcov_cfddlc_output
+          fail_ci_if_error: false 
