@@ -1,6 +1,6 @@
 # cfd-dlc
 
-Version: 0.0.23
+Version: 0.0.24
 
 Library for creating, signing and verifying signatures for Discrete Logarithm Contracts (DLC).
 
