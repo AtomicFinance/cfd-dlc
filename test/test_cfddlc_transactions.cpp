@@ -800,17 +800,129 @@ TEST(DlcManager, CreateCetTransactionNotEnoughInputTest) {
 
   auto local_params_short = LOCAL_PARAMS;
   local_params_short.input_amount = Amount::CreateBySatoshiAmount(1000);
-  auto remote_params_short = LOCAL_PARAMS;
+  auto remote_params_short = REMOTE_PARAMS;
   remote_params_short.input_amount = Amount::CreateBySatoshiAmount(1000);
-  // Act/Assert
+
+  // Act/Assert - Still should throw for insufficient funds (not zero)
   ASSERT_THROW(
     auto dlc_transactions = DlcManager::CreateDlcTransactions(
       outcomes, local_params_short, REMOTE_PARAMS, REFUND_LOCKTIME, 1),
     CfdException);
   ASSERT_THROW(
     auto dlc_transactions = DlcManager::CreateDlcTransactions(
-      outcomes, remote_params_short, REMOTE_PARAMS, REFUND_LOCKTIME, 1),
+      outcomes, local_params_short, remote_params_short, REFUND_LOCKTIME, 1),
     CfdException);
+}
+
+TEST(DlcManager, CreateSingleFundedDlcTransactions) {
+  // Arrange
+  std::vector<DlcOutcome> outcomes = {
+    {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
+
+  // Create params for single-funded DLC where acceptor has zero inputs
+  auto local_params_funded = LOCAL_PARAMS;
+  local_params_funded.input_amount = Amount::CreateByCoinAmount(
+    100);  // Double the input for both parties' collateral
+
+  auto remote_params_unfunded = REMOTE_PARAMS;
+  remote_params_unfunded.input_amount =
+    Amount::CreateBySatoshiAmount(0);          // Zero inputs for acceptor
+  remote_params_unfunded.inputs_info.clear();  // No inputs
+
+  // Act
+  auto dlc_transactions = DlcManager::CreateDlcTransactions(
+    outcomes, local_params_funded, remote_params_unfunded, REFUND_LOCKTIME, 1);
+
+  auto fund_tx = dlc_transactions.fund_transaction;
+  auto refund_tx = dlc_transactions.refund_transaction;
+  auto cets = dlc_transactions.cets;
+
+  // Assert
+  EXPECT_EQ(dlc_transactions.cets.size(), outcomes.size());
+
+  // Fund transaction should have only 2 outputs (fund + local change), remote
+  // change should be filtered out as dust
+  EXPECT_EQ(2, fund_tx.GetTransaction().GetTxOutCount());
+
+  // Verify fund output value accounts for both parties' collateral
+  auto fund_output_amount = fund_tx.GetTransaction().GetTxOut(0).GetValue();
+  EXPECT_GT(
+    fund_output_amount.GetSatoshiValue(),
+    LOCAL_COLLATERAL_AMOUNT.GetSatoshiValue() +
+      REMOTE_COLLATERAL_AMOUNT.GetSatoshiValue());
+
+  // Verify refund transaction correctly distributes collateral
+  EXPECT_EQ(
+    LOCAL_COLLATERAL_AMOUNT.GetSatoshiValue(),
+    refund_tx.GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+  EXPECT_EQ(
+    REMOTE_COLLATERAL_AMOUNT.GetSatoshiValue(),
+    refund_tx.GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
+
+  // Verify CETs have correct payouts
+  EXPECT_EQ(
+    WIN_AMOUNT.GetSatoshiValue(),
+    cets[0].GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+  EXPECT_EQ(
+    LOSE_AMOUNT.GetSatoshiValue(),
+    cets[0].GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
+}
+
+TEST(DlcManager, CreateBatchSingleFundedDlcTransactions) {
+  // Arrange
+  std::vector<DlcOutcome> outcomes = {
+    {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
+  std::vector<std::vector<DlcOutcome>> outcomes_batch = {outcomes, outcomes};
+  std::vector<uint64_t> refund_locktimes = {REFUND_LOCKTIME, REFUND_LOCKTIME};
+
+  // Create params for single-funded batch DLC where acceptor has zero inputs
+  auto local_batch_params_funded = LOCAL_BATCH_PARAMS;
+  local_batch_params_funded.input_amount =
+    Amount::CreateByCoinAmount(200);  // Enough for both DLCs
+
+  auto remote_batch_params_unfunded = REMOTE_BATCH_PARAMS;
+  remote_batch_params_unfunded.input_amount =
+    Amount::CreateBySatoshiAmount(0);                // Zero inputs for acceptor
+  remote_batch_params_unfunded.inputs_info.clear();  // No inputs
+
+  // Act
+  auto dlc_transactions = DlcManager::CreateBatchDlcTransactions(
+    outcomes_batch, local_batch_params_funded, remote_batch_params_unfunded,
+    refund_locktimes, 1);
+
+  auto fund_tx = dlc_transactions.fund_transaction;
+  auto refund_txs = dlc_transactions.refund_transactions;
+  auto cets_list = dlc_transactions.cets_list;
+
+  // Assert
+  EXPECT_EQ(cets_list.size(), outcomes_batch.size());
+  EXPECT_EQ(refund_txs.size(), outcomes_batch.size());
+
+  // Fund transaction should have only 3 outputs (2 fund outputs + local
+  // change), remote change should be filtered out as dust
+  EXPECT_EQ(3, fund_tx.GetTransaction().GetTxOutCount());
+
+  // Verify each refund transaction correctly distributes collateral
+  for (size_t i = 0; i < refund_txs.size(); i++) {
+    EXPECT_EQ(
+      LOCAL_COLLATERAL_AMOUNT.GetSatoshiValue(),
+      refund_txs[i].GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+    EXPECT_EQ(
+      REMOTE_COLLATERAL_AMOUNT.GetSatoshiValue(),
+      refund_txs[i].GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
+  }
+
+  // Verify each CET list has correct payouts
+  for (size_t i = 0; i < cets_list.size(); i++) {
+    auto cets = cets_list[i];
+    EXPECT_EQ(cets.size(), outcomes.size());
+    EXPECT_EQ(
+      WIN_AMOUNT.GetSatoshiValue(),
+      cets[0].GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+    EXPECT_EQ(
+      LOSE_AMOUNT.GetSatoshiValue(),
+      cets[0].GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
+  }
 }
 
 TEST(DlcManager, FundTransactionWithPremiumTest) {
@@ -1149,4 +1261,73 @@ TEST(DlcManager, CetTestSerialId) {
     &cet, local_adaptor_pair.signature, {ORACLE_SIGNATURES[0]},
     REMOTE_FUND_PRIVKEY, fund_script, FUND_TX_SERIAL_ID, 0, FUND_OUTPUT);
   EXPECT_EQ(cet.GetHex(), CET_SERIAL_ID_HEX_SIGNED.GetHex());
+}
+
+TEST(DlcManager, CreateSingleFundedDlcTransactionsNoChange) {
+  // Arrange
+  std::vector<DlcOutcome> outcomes = {
+    {WIN_AMOUNT, LOSE_AMOUNT}, {LOSE_AMOUNT, WIN_AMOUNT}};
+
+  // First, run with large amount to see what the change is
+  auto local_params_large = LOCAL_PARAMS;
+  local_params_large.input_amount =
+    Amount::CreateByCoinAmount(100);  // Large amount
+
+  auto remote_params_unfunded = REMOTE_PARAMS;
+  remote_params_unfunded.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params_unfunded.inputs_info.clear();
+
+  // Get the change amount from a large input
+  auto dlc_transactions_large = DlcManager::CreateDlcTransactions(
+    outcomes, local_params_large, remote_params_unfunded, REFUND_LOCKTIME, 1);
+  auto fund_tx_large = dlc_transactions_large.fund_transaction;
+
+  // Calculate exact amount needed: large_input - change_amount
+  auto large_input = local_params_large.input_amount;
+  auto change_amount = fund_tx_large.GetTransaction()
+                         .GetTxOut(1)
+                         .GetValue();  // Change is second output
+  auto exact_amount_needed = large_input - change_amount;
+
+  // Now create params with exact amount
+  auto local_params_exact = LOCAL_PARAMS;
+  local_params_exact.input_amount = exact_amount_needed;
+
+  // Act
+  auto dlc_transactions = DlcManager::CreateDlcTransactions(
+    outcomes, local_params_exact, remote_params_unfunded, REFUND_LOCKTIME, 1);
+
+  auto fund_tx = dlc_transactions.fund_transaction;
+  auto refund_tx = dlc_transactions.refund_transaction;
+  auto cets = dlc_transactions.cets;
+
+  // Assert
+  EXPECT_EQ(dlc_transactions.cets.size(), outcomes.size());
+
+  // Fund transaction should have exactly 1 output (just the funding output, no
+  // change)
+  EXPECT_EQ(1, fund_tx.GetTransaction().GetTxOutCount());
+
+  // The single output should be the funding output
+  auto fund_output_amount = fund_tx.GetTransaction().GetTxOut(0).GetValue();
+  EXPECT_GT(
+    fund_output_amount.GetSatoshiValue(),
+    LOCAL_COLLATERAL_AMOUNT.GetSatoshiValue() +
+      REMOTE_COLLATERAL_AMOUNT.GetSatoshiValue());
+
+  // Verify refund transaction correctly distributes collateral
+  EXPECT_EQ(
+    LOCAL_COLLATERAL_AMOUNT.GetSatoshiValue(),
+    refund_tx.GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+  EXPECT_EQ(
+    REMOTE_COLLATERAL_AMOUNT.GetSatoshiValue(),
+    refund_tx.GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
+
+  // Verify CETs have correct payouts
+  EXPECT_EQ(
+    WIN_AMOUNT.GetSatoshiValue(),
+    cets[0].GetTransaction().GetTxOut(0).GetValue().GetSatoshiValue());
+  EXPECT_EQ(
+    LOSE_AMOUNT.GetSatoshiValue(),
+    cets[0].GetTransaction().GetTxOut(1).GetValue().GetSatoshiValue());
 }
