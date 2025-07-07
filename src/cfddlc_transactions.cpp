@@ -172,7 +172,7 @@ TransactionController DlcManager::CreateFundTransaction(
 
   outputs_info.push_back(fund_output_info);
 
-  // Only add change outputs if they're not dust (for single-funded DLC support)
+  // Single-funded DLC: exclude zero-value change outputs (dust filtering)
   if (!IsDustOutputInfo(local_output_info)) {
     outputs_info.push_back(local_output_info);
   }
@@ -264,7 +264,7 @@ TransactionController DlcManager::CreateBatchFundTransaction(
     remote_change_output.GetLockingScript(), remote_change_output.GetValue(),
     remote_serial_id};
 
-  // Only add change outputs if they're not dust (for single-funded DLC support)
+  // Single-funded DLC: exclude zero-value change outputs (dust filtering)
   if (!IsDustOutputInfo(local_output_info)) {
     outputs_info.push_back(local_output_info);
   }
@@ -656,7 +656,8 @@ DlcTransactions DlcManager::CreateDlcTransactions(
   std::tie(remote_change_output, remote_fund_fee, remote_cet_fee) =
     GetChangeOutputAndFees(remote_params, fee_rate);
 
-  // Handle single-funded DLC: funding party pays for both CET fees
+  // Single-funded DLC: when one party has no inputs, the funding party pays all
+  // fees
   if (local_params.input_amount == 0) {
     // Local party has no inputs, so remote party should pay for both CET fees
     remote_cet_fee += local_cet_fee;
@@ -973,7 +974,7 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
   auto cet_fee = ceil(cet_weight / 4) * fee_rate;
   auto fund_out = params.collateral + fund_fee + cet_fee;
 
-  // Handle single-funded DLC case where one party has zero inputs
+  // Single-funded DLC: party with no inputs contributes zero fees
   if (params.input_amount == 0) {
     // Party with no inputs: return zero change output and zero fees
     // The funding party pays for all fees including this party's CET fees
@@ -1018,7 +1019,7 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetBatchChangeOutputAndFees(
 
   auto fund_out = collateral + fund_fee + cet_fee;
 
-  // Handle single-funded DLC case where one party has zero inputs
+  // Single-funded DLC: party with no inputs contributes zero fees
   if (params.input_amount == 0) {
     // Party with no inputs: return zero change output and zero fees
     // The funding party pays for all fees including this party's CET fees
