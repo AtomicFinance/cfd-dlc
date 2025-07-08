@@ -954,9 +954,14 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
   Amount option_premium,
   Address option_dest) {
   auto inputs_size = GetInputsWeight(params.inputs_info);
+
+  // Add weight for DLC inputs
+  auto dlc_inputs_size = GetDlcInputsWeight(params.dlc_inputs_info);
+
   auto change_size = params.change_script_pubkey.GetData().GetDataSize();
   double fund_weight =
-    (FUND_TX_BASE_WEIGHT / 2 + inputs_size + change_size * 4 + 36);
+    (FUND_TX_BASE_WEIGHT / 2 + inputs_size + dlc_inputs_size + change_size * 4 +
+     36);
   if (option_premium.GetSatoshiValue() > 0) {
     if (option_dest.GetAddress() == "") {
       throw CfdException(
@@ -974,8 +979,13 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
   auto cet_fee = ceil(cet_weight / 4) * fee_rate;
   auto fund_out = params.collateral + fund_fee + cet_fee;
 
+  // Calculate total input amount including DLC inputs
+  Amount total_input_amount =
+    params.input_amount + CalculateTotalInputAmount(
+                            std::vector<TxInputInfo>(), params.dlc_inputs_info);
+
   // Single-funded DLC: party with no inputs contributes zero fees
-  if (params.input_amount == 0) {
+  if (total_input_amount == 0) {
     // Party with no inputs: return zero change output and zero fees
     // The funding party pays for all fees including this party's CET fees
     TxOut change_output(
@@ -983,7 +993,7 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
     return std::make_tuple(change_output, 0, 0);
   }
 
-  if (params.input_amount < (fund_out + option_premium)) {
+  if (total_input_amount < (fund_out + option_premium)) {
     throw CfdException(
       CfdError::kCfdIllegalArgumentError,
       "Input amount smaller than required for collateral, "
@@ -991,7 +1001,7 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
   }
 
   TxOut change_output(
-    params.input_amount - fund_out - option_premium,
+    total_input_amount - fund_out - option_premium,
     params.change_script_pubkey);
 
   return std::make_tuple(change_output, fund_fee, cet_fee);
@@ -1000,6 +1010,10 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
 std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetBatchChangeOutputAndFees(
   const BatchPartyParams &params, uint64_t fee_rate) {
   auto inputs_size = GetInputsWeight(params.inputs_info);
+
+  // Note: BatchPartyParams doesn't have dlc_inputs_info field yet
+  // This would need to be added if batch DLC splicing is required
+
   auto change_size = params.change_script_pubkey.GetData().GetDataSize();
   double fund_weight =
     ((BATCH_FUND_TX_BASE_WEIGHT +
@@ -1056,6 +1070,156 @@ Pubkey DlcManager::ComputeAdaptorPoint(
   }
 
   return SchnorrUtil::ComputeSigPointBatch(msgs, r_values, pubkey);
+}
+
+// DLC Splicing Implementation
+
+std::vector<TxInputInfo> DlcManager::ConvertDlcInputsToTxInputs(
+  const std::vector<DlcInputInfo> &dlc_inputs_info) {
+  std::vector<TxInputInfo> tx_inputs;
+  tx_inputs.reserve(dlc_inputs_info.size());
+
+  for (const auto &dlc_input : dlc_inputs_info) {
+    TxIn tx_in(dlc_input.fund_txid, dlc_input.fund_vout, 0, Script());
+    TxInputInfo tx_input_info = {
+      tx_in, dlc_input.max_witness_length, dlc_input.input_serial_id};
+    tx_inputs.push_back(tx_input_info);
+  }
+
+  return tx_inputs;
+}
+
+uint32_t DlcManager::GetDlcInputsWeight(
+  const std::vector<DlcInputInfo> &dlc_inputs_info) {
+  uint32_t total_weight = 0;
+
+  for (const auto &dlc_input : dlc_inputs_info) {
+    // DLC inputs are P2WSH multisig inputs
+    // Base input: 36 bytes (txid + vout + sequence)
+    // Script sig: empty (1 byte for empty script)
+    // Witness: 1 byte (witness stack size) + signatures + redeem script
+    // Signatures: 2 * 72 bytes (max signature size) + 2 * 1 byte (length)
+    // Redeem script: ~69 bytes (2-of-2 multisig) + 1 byte (length)
+    // Total witness: ~220 bytes
+    total_weight += 36 * 4 + 1 * 4 + dlc_input.max_witness_length;
+  }
+
+  return total_weight;
+}
+
+Amount DlcManager::CalculateTotalInputAmount(
+  const std::vector<TxInputInfo> &regular_inputs,
+  const std::vector<DlcInputInfo> &dlc_inputs) {
+  Amount total = Amount::CreateBySatoshiAmount(0);
+
+  // Note: regular_inputs don't contain amount info - that's in
+  // PartyParams.input_amount DLC inputs contain their amounts directly
+  for (const auto &dlc_input : dlc_inputs) {
+    total += dlc_input.fund_amount;
+  }
+
+  return total;
+}
+
+Script DlcManager::CreateDlcInputFundingScript(const DlcInputInfo &dlc_input) {
+  return CreateFundTxLockingScript(
+    dlc_input.local_fund_pubkey, dlc_input.remote_fund_pubkey);
+}
+
+DlcTransactions DlcManager::CreateSplicedDlcTransactions(
+  const std::vector<DlcOutcome> &outcomes,
+  const PartyParams &local_params,
+  const PartyParams &remote_params,
+  uint64_t refund_locktime,
+  uint32_t fee_rate,
+  const Address &option_dest,
+  const Amount &option_premium,
+  uint64_t fund_lock_time,
+  uint64_t cet_lock_time,
+  uint64_t fund_output_serial_id) {
+  // Create enhanced party parameters that include DLC inputs as regular inputs
+  PartyParams enhanced_local_params = local_params;
+  PartyParams enhanced_remote_params = remote_params;
+
+  // Convert DLC inputs to regular transaction inputs and add to inputs_info
+  auto local_dlc_tx_inputs =
+    ConvertDlcInputsToTxInputs(local_params.dlc_inputs_info);
+  auto remote_dlc_tx_inputs =
+    ConvertDlcInputsToTxInputs(remote_params.dlc_inputs_info);
+
+  enhanced_local_params.inputs_info.insert(
+    enhanced_local_params.inputs_info.end(), local_dlc_tx_inputs.begin(),
+    local_dlc_tx_inputs.end());
+
+  enhanced_remote_params.inputs_info.insert(
+    enhanced_remote_params.inputs_info.end(), remote_dlc_tx_inputs.begin(),
+    remote_dlc_tx_inputs.end());
+
+  // Calculate total input amounts including DLC inputs
+  Amount local_dlc_amount = CalculateTotalInputAmount(
+    std::vector<TxInputInfo>(), local_params.dlc_inputs_info);
+  Amount remote_dlc_amount = CalculateTotalInputAmount(
+    std::vector<TxInputInfo>(), remote_params.dlc_inputs_info);
+
+  enhanced_local_params.input_amount += local_dlc_amount;
+  enhanced_remote_params.input_amount += remote_dlc_amount;
+
+  // Clear DLC inputs from enhanced params since they're now regular inputs
+  enhanced_local_params.dlc_inputs_info.clear();
+  enhanced_remote_params.dlc_inputs_info.clear();
+
+  // Use the regular DLC transaction creation with enhanced parameters
+  return CreateDlcTransactions(
+    outcomes, enhanced_local_params, enhanced_remote_params, refund_locktime,
+    fee_rate, option_dest, option_premium, fund_lock_time, cet_lock_time,
+    fund_output_serial_id);
+}
+
+ByteData DlcManager::GetRawDlcFundingInputSignature(
+  const TransactionController &fund_transaction,
+  const DlcInputInfo &dlc_input,
+  const Privkey &privkey) {
+  auto funding_script = CreateDlcInputFundingScript(dlc_input);
+
+  return GetRawTxWitSigAllSignature(
+    fund_transaction, privkey, dlc_input.fund_txid, dlc_input.fund_vout,
+    funding_script, dlc_input.fund_amount);
+}
+
+void DlcManager::SignDlcFundingInput(
+  TransactionController *fund_transaction,
+  const DlcInputInfo &dlc_input,
+  const Privkey &local_privkey,
+  const ByteData &remote_signature) {
+  auto funding_script = CreateDlcInputFundingScript(dlc_input);
+  auto local_signature =
+    GetRawDlcFundingInputSignature(*fund_transaction, dlc_input, local_privkey);
+
+  // Determine signature order based on public key order
+  auto local_pubkey = local_privkey.GetPubkey();
+  std::vector<ByteData> signatures;
+
+  if (local_pubkey.GetHex() < dlc_input.local_fund_pubkey.GetHex()) {
+    signatures = {local_signature, remote_signature};
+  } else {
+    signatures = {remote_signature, local_signature};
+  }
+
+  AddSignaturesForMultiSigInput(
+    fund_transaction, dlc_input.fund_txid, dlc_input.fund_vout, funding_script,
+    signatures);
+}
+
+bool DlcManager::VerifyDlcFundingInputSignature(
+  const TransactionController &fund_transaction,
+  const DlcInputInfo &dlc_input,
+  const ByteData &signature,
+  const Pubkey &pubkey) {
+  auto funding_script = CreateDlcInputFundingScript(dlc_input);
+
+  return fund_transaction.VerifyInputSignature(
+    signature, pubkey, dlc_input.fund_txid, dlc_input.fund_vout, funding_script,
+    SigHashType(), dlc_input.fund_amount, WitnessVersion::kVersion0);
 }
 }  // namespace dlc
 }  // namespace cfd
