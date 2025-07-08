@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,14 +26,14 @@ jobs:
 
   cmake-win-test:
     name: cmake build-win
-    runs-on: windows-2019
+    runs-on: windows-latest
     strategy:
       matrix:
-        generator: ['Visual Studio 16 2019', 'MSYS Makefiles']
+        generator: ['Visual Studio 17 2022', 'MSYS Makefiles']
         shared: [on, off]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: cmake_version
       run: cmake --version
     - name: cmake_configure
@@ -47,10 +47,10 @@ jobs:
 
   cmake-mac-test:
     name: cmake build-mac
-    runs-on: self-hosted
+    runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: cmake_version
       run: cmake --version
     - name: cmake_configure
@@ -70,7 +70,7 @@ jobs:
         shared: [on, off]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: dump version
       run: |
         cmake --version
