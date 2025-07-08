@@ -171,8 +171,14 @@ TransactionController DlcManager::CreateFundTransaction(
     remote_serial_id};
 
   outputs_info.push_back(fund_output_info);
-  outputs_info.push_back(local_output_info);
-  outputs_info.push_back(remote_output_info);
+
+  // Single-funded DLC: exclude zero-value change outputs (dust filtering)
+  if (!IsDustOutputInfo(local_output_info)) {
+    outputs_info.push_back(local_output_info);
+  }
+  if (!IsDustOutputInfo(remote_output_info)) {
+    outputs_info.push_back(remote_output_info);
+  }
 
   std::sort(outputs_info.begin(), outputs_info.end(), CompareOutputSerialId);
 
@@ -258,8 +264,13 @@ TransactionController DlcManager::CreateBatchFundTransaction(
     remote_change_output.GetLockingScript(), remote_change_output.GetValue(),
     remote_serial_id};
 
-  outputs_info.push_back(local_output_info);
-  outputs_info.push_back(remote_output_info);
+  // Single-funded DLC: exclude zero-value change outputs (dust filtering)
+  if (!IsDustOutputInfo(local_output_info)) {
+    outputs_info.push_back(local_output_info);
+  }
+  if (!IsDustOutputInfo(remote_output_info)) {
+    outputs_info.push_back(remote_output_info);
+  }
 
   std::sort(outputs_info.begin(), outputs_info.end(), CompareOutputSerialId);
 
@@ -645,6 +656,31 @@ DlcTransactions DlcManager::CreateDlcTransactions(
   std::tie(remote_change_output, remote_fund_fee, remote_cet_fee) =
     GetChangeOutputAndFees(remote_params, fee_rate);
 
+  // Single-funded DLC: when one party has no inputs, the funding party pays all
+  // fees
+  if (local_params.input_amount == 0) {
+    // Local party has no inputs, so remote party should pay for both CET fees
+    remote_cet_fee += local_cet_fee;
+    local_cet_fee = 0;
+    // Recalculate remote change: fund both collaterals and all fees
+    auto remote_total_cost = local_params.collateral +
+                             remote_params.collateral + remote_fund_fee +
+                             remote_cet_fee;
+    remote_change_output = TxOut(
+      remote_params.input_amount - remote_total_cost - option_premium,
+      remote_params.change_script_pubkey);
+  } else if (remote_params.input_amount == 0) {
+    // Remote party has no inputs, so local party should pay for both CET fees
+    local_cet_fee += remote_cet_fee;
+    remote_cet_fee = 0;
+    // Recalculate local change: fund both collaterals and all fees
+    auto local_total_cost = local_params.collateral + remote_params.collateral +
+                            local_fund_fee + local_cet_fee;
+    local_change_output = TxOut(
+      local_params.input_amount - local_total_cost - option_premium,
+      local_params.change_script_pubkey);
+  }
+
   auto fund_output_value = local_params.input_amount +
                            remote_params.input_amount -
                            local_change_output.GetValue().GetSatoshiValue() -
@@ -679,16 +715,22 @@ DlcTransactions DlcManager::CreateDlcTransactions(
   // the given lock time.
   auto fund_tx_id = fund_tx.GetTransaction().GetTxid();
 
-  std::vector<uint64_t> change_serial_ids = {
-    fund_output_serial_id, local_params.change_serial_id,
-    remote_params.change_serial_id};
+  // Build list of actual serial IDs that were included (excluding dust outputs)
+  std::vector<uint64_t> actual_serial_ids = {fund_output_serial_id};
 
-  std::sort(change_serial_ids.begin(), change_serial_ids.end());
+  if (local_change_output.GetValue() >= DUST_LIMIT) {
+    actual_serial_ids.push_back(local_params.change_serial_id);
+  }
+  if (remote_change_output.GetValue() >= DUST_LIMIT) {
+    actual_serial_ids.push_back(remote_params.change_serial_id);
+  }
+
+  std::sort(actual_serial_ids.begin(), actual_serial_ids.end());
 
   uint32_t fund_vout = 0;
 
-  for (size_t i = 0; i < change_serial_ids.size(); i++) {
-    if (change_serial_ids[i] == fund_output_serial_id) {
+  for (size_t i = 0; i < actual_serial_ids.size(); i++) {
+    if (actual_serial_ids[i] == fund_output_serial_id) {
       fund_vout = static_cast<uint32_t>(i);
       break;
     }
@@ -824,21 +866,26 @@ BatchDlcTransactions DlcManager::CreateBatchDlcTransactions(
       fund_vouts.push_back(i);
     }
   } else {
-    // set change_serial_ids to fund_output_serial_ids and change_serial_ids and
-    // sort
-    std::vector<uint64_t> change_serial_ids = fund_output_serial_ids;
-    change_serial_ids.push_back(local_params.change_serial_id);
-    change_serial_ids.push_back(remote_params.change_serial_id);
-    std::sort(change_serial_ids.begin(), change_serial_ids.end());
+    // Build list of actual serial IDs that were included (excluding dust
+    // outputs)
+    std::vector<uint64_t> actual_serial_ids = fund_output_serial_ids;
+
+    if (local_change_output.GetValue() >= DUST_LIMIT) {
+      actual_serial_ids.push_back(local_params.change_serial_id);
+    }
+    if (remote_change_output.GetValue() >= DUST_LIMIT) {
+      actual_serial_ids.push_back(remote_params.change_serial_id);
+    }
+    std::sort(actual_serial_ids.begin(), actual_serial_ids.end());
 
     // set fund_vouts to empty array
     fund_vouts.resize(fund_output_serial_ids.size());
 
     // set fund_vouts to the index of fund_output_serial_ids in
-    // change_serial_ids
+    // actual_serial_ids
     for (size_t i = 0; i < fund_output_serial_ids.size(); i++) {
-      for (size_t j = 0; j < change_serial_ids.size(); j++) {
-        if (fund_output_serial_ids[i] == change_serial_ids[j]) {
+      for (size_t j = 0; j < actual_serial_ids.size(); j++) {
+        if (fund_output_serial_ids[i] == actual_serial_ids[j]) {
           fund_vouts[i] = j;
           break;
         }
@@ -926,6 +973,16 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
      params.final_script_pubkey.GetData().GetDataSize() * 4);
   auto cet_fee = ceil(cet_weight / 4) * fee_rate;
   auto fund_out = params.collateral + fund_fee + cet_fee;
+
+  // Single-funded DLC: party with no inputs contributes zero fees
+  if (params.input_amount == 0) {
+    // Party with no inputs: return zero change output and zero fees
+    // The funding party pays for all fees including this party's CET fees
+    TxOut change_output(
+      Amount::CreateBySatoshiAmount(0), params.change_script_pubkey);
+    return std::make_tuple(change_output, 0, 0);
+  }
+
   if (params.input_amount < (fund_out + option_premium)) {
     throw CfdException(
       CfdError::kCfdIllegalArgumentError,
@@ -961,6 +1018,16 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetBatchChangeOutputAndFees(
     params.collaterals.begin(), params.collaterals.end(), Amount(0));
 
   auto fund_out = collateral + fund_fee + cet_fee;
+
+  // Single-funded DLC: party with no inputs contributes zero fees
+  if (params.input_amount == 0) {
+    // Party with no inputs: return zero change output and zero fees
+    // The funding party pays for all fees including this party's CET fees
+    TxOut change_output(
+      Amount::CreateBySatoshiAmount(0), params.change_script_pubkey);
+    return std::make_tuple(change_output, 0, 0);
+  }
+
   if (params.input_amount < fund_out) {
     throw CfdException(
       CfdError::kCfdIllegalArgumentError,
