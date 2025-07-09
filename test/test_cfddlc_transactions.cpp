@@ -1625,3 +1625,400 @@ TEST(DlcManagerTest, CreateSplicedDlcTransactionsDlcTransition) {
   EXPECT_EQ(existing_dlc_input.fund_txid.GetHex(), tx_in.GetTxid().GetHex());
   EXPECT_EQ(existing_dlc_input.fund_vout, tx_in.GetVout());
 }
+
+// Test for DLC input validation - zero amount
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsZeroAmountFails) {
+  // Create DLC input with zero amount
+  DlcInputInfo zero_amount_input;
+  zero_amount_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  zero_amount_input.fund_vout = 0;
+  zero_amount_input.fund_amount = Amount::CreateBySatoshiAmount(0);  // Zero amount
+  zero_amount_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  zero_amount_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  zero_amount_input.max_witness_length = 220;
+  zero_amount_input.input_serial_id = 1;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {zero_amount_input};  // Zero amount DLC input
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  local_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {};
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(7000000),
+     Amount::CreateBySatoshiAmount(3000000)},
+    {Amount::CreateBySatoshiAmount(3000000),
+     Amount::CreateBySatoshiAmount(7000000)}};
+
+  // Should throw exception for zero amount DLC input
+  EXPECT_THROW(
+    DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2),
+    CfdException);
+}
+
+// Test for DLC input validation - identical pubkeys
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsIdenticalPubkeysFails) {
+  // Create DLC input with identical local and remote pubkeys
+  DlcInputInfo identical_pubkeys_input;
+  identical_pubkeys_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  identical_pubkeys_input.fund_vout = 0;
+  identical_pubkeys_input.fund_amount = Amount::CreateBySatoshiAmount(10000000);
+  identical_pubkeys_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  identical_pubkeys_input.remote_fund_pubkey = LOCAL_FUND_PUBKEY;  // Same as local!
+  identical_pubkeys_input.max_witness_length = 220;
+  identical_pubkeys_input.input_serial_id = 1;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {identical_pubkeys_input};  // Identical pubkeys
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  local_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {};
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(7000000),
+     Amount::CreateBySatoshiAmount(3000000)},
+    {Amount::CreateBySatoshiAmount(3000000),
+     Amount::CreateBySatoshiAmount(7000000)}};
+
+  // Should throw exception for identical pubkeys
+  EXPECT_THROW(
+    DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2),
+    CfdException);
+}
+
+// Test for dust limit validation
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsDustLimitFails) {
+  // Create DLC input with very small amount (below dust limit)
+  DlcInputInfo dust_input;
+  dust_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  dust_input.fund_vout = 0;
+  dust_input.fund_amount = Amount::CreateBySatoshiAmount(500);  // Below 546 sat dust limit
+  dust_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  dust_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  dust_input.max_witness_length = 220;
+  dust_input.input_serial_id = 1;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {dust_input};  // Dust amount input
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);  // No regular inputs
+  local_params.collateral = Amount::CreateBySatoshiAmount(200);  // Very small collateral
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {};
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(200);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(300),
+     Amount::CreateBySatoshiAmount(100)},
+    {Amount::CreateBySatoshiAmount(100),
+     Amount::CreateBySatoshiAmount(300)}};
+
+  // Should throw exception for dust amount
+  EXPECT_THROW(
+    DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2),
+    CfdException);
+}
+
+// Test for remote party DLC input validation
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsRemoteValidationFails) {
+  // Create valid local DLC input
+  DlcInputInfo valid_local_input;
+  valid_local_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  valid_local_input.fund_vout = 0;
+  valid_local_input.fund_amount = Amount::CreateBySatoshiAmount(10000000);
+  valid_local_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  valid_local_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  valid_local_input.max_witness_length = 220;
+  valid_local_input.input_serial_id = 1;
+
+  // Create invalid remote DLC input (zero amount)
+  DlcInputInfo invalid_remote_input;
+  invalid_remote_input.fund_txid =
+    Txid("7fc895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19c");
+  invalid_remote_input.fund_vout = 1;
+  invalid_remote_input.fund_amount = Amount::CreateBySatoshiAmount(0);  // Zero amount
+  invalid_remote_input.local_fund_pubkey = LOCAL_FUND_PUBKEY2;
+  invalid_remote_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY2;
+  invalid_remote_input.max_witness_length = 220;
+  invalid_remote_input.input_serial_id = 2;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {valid_local_input};  // Valid local input
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  local_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {invalid_remote_input};  // Invalid remote input
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(7000000),
+     Amount::CreateBySatoshiAmount(3000000)},
+    {Amount::CreateBySatoshiAmount(3000000),
+     Amount::CreateBySatoshiAmount(7000000)}};
+
+  // Should throw exception for zero amount in remote DLC input
+  EXPECT_THROW(
+    DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2),
+    CfdException);
+}
+
+// Test for multiple DLC inputs validation
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsMultipleInputsValidation) {
+  // Create multiple DLC inputs, one valid and one invalid
+  DlcInputInfo valid_input;
+  valid_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  valid_input.fund_vout = 0;
+  valid_input.fund_amount = Amount::CreateBySatoshiAmount(10000000);
+  valid_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  valid_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  valid_input.max_witness_length = 220;
+  valid_input.input_serial_id = 1;
+
+  DlcInputInfo invalid_input;
+  invalid_input.fund_txid =
+    Txid("7fc895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19c");
+  invalid_input.fund_vout = 1;
+  invalid_input.fund_amount = Amount::CreateBySatoshiAmount(5000000);
+  invalid_input.local_fund_pubkey = LOCAL_FUND_PUBKEY2;
+  invalid_input.remote_fund_pubkey = LOCAL_FUND_PUBKEY2;  // Same as local - invalid!
+  invalid_input.max_witness_length = 220;
+  invalid_input.input_serial_id = 2;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {valid_input, invalid_input};  // Mixed valid/invalid
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  local_params.collateral = Amount::CreateBySatoshiAmount(7000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {};
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(3000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(8000000),
+     Amount::CreateBySatoshiAmount(2000000)},
+    {Amount::CreateBySatoshiAmount(2000000),
+     Amount::CreateBySatoshiAmount(8000000)}};
+
+  // Should throw exception for identical pubkeys in one of the inputs
+  EXPECT_THROW(
+    DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2),
+    CfdException);
+}
+
+// Test for validation passing with properly formatted inputs
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsValidationPasses) {
+  // Create valid DLC inputs for both parties
+  DlcInputInfo valid_local_input;
+  valid_local_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  valid_local_input.fund_vout = 0;
+  valid_local_input.fund_amount = Amount::CreateBySatoshiAmount(10000000);
+  valid_local_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  valid_local_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  valid_local_input.max_witness_length = 220;
+  valid_local_input.input_serial_id = 1;
+
+  DlcInputInfo valid_remote_input;
+  valid_remote_input.fund_txid =
+    Txid("7fc895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19c");
+  valid_remote_input.fund_vout = 1;
+  valid_remote_input.fund_amount = Amount::CreateBySatoshiAmount(8000000);
+  valid_remote_input.local_fund_pubkey = LOCAL_FUND_PUBKEY2;
+  valid_remote_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY2;  // Different from local
+  valid_remote_input.max_witness_length = 220;
+  valid_remote_input.input_serial_id = 2;
+
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = {};
+  local_params.dlc_inputs_info = {valid_local_input};  // Valid local input
+  local_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  local_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = {};
+  remote_params.dlc_inputs_info = {valid_remote_input};  // Valid remote input
+  remote_params.input_amount = Amount::CreateBySatoshiAmount(0);
+  remote_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(7000000),
+     Amount::CreateBySatoshiAmount(3000000)},
+    {Amount::CreateBySatoshiAmount(3000000),
+     Amount::CreateBySatoshiAmount(7000000)}};
+
+  // Should pass validation and create valid DLC transactions
+  EXPECT_NO_THROW(
+    auto dlc_txs = DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2));
+
+  auto dlc_txs = DlcManager::CreateSplicedDlcTransactions(
+    outcomes, local_params, remote_params, REFUND_LOCKTIME, 2);
+
+  // Verify the transaction was created successfully
+  EXPECT_EQ(2, dlc_txs.fund_transaction.GetTransaction().GetTxInCount());  // Two DLC inputs
+  EXPECT_EQ(outcomes.size(), dlc_txs.cets.size());
+
+  // Verify both DLC inputs are present
+  bool local_input_found = false, remote_input_found = false;
+  for (uint32_t i = 0; i < dlc_txs.fund_transaction.GetTransaction().GetTxInCount(); i++) {
+    auto tx_in = dlc_txs.fund_transaction.GetTransaction().GetTxIn(i);
+    if (tx_in.GetTxid().GetHex() == valid_local_input.fund_txid.GetHex() &&
+        tx_in.GetVout() == valid_local_input.fund_vout) {
+      local_input_found = true;
+    }
+    if (tx_in.GetTxid().GetHex() == valid_remote_input.fund_txid.GetHex() &&
+        tx_in.GetVout() == valid_remote_input.fund_vout) {
+      remote_input_found = true;
+    }
+  }
+  EXPECT_TRUE(local_input_found);
+  EXPECT_TRUE(remote_input_found);
+}
+
+// Test for mixed regular and DLC inputs validation
+TEST(DlcManagerTest, CreateSplicedDlcTransactionsMixedInputs) {
+  // Create a valid DLC input
+  DlcInputInfo valid_dlc_input;
+  valid_dlc_input.fund_txid =
+    Txid("8ec895b4d30adb01e38471ca1019bfc8c3e5fbc98b5216e84d68f0cd9b8de19b");
+  valid_dlc_input.fund_vout = 0;
+  valid_dlc_input.fund_amount = Amount::CreateBySatoshiAmount(8000000);
+  valid_dlc_input.local_fund_pubkey = LOCAL_FUND_PUBKEY;
+  valid_dlc_input.remote_fund_pubkey = REMOTE_FUND_PUBKEY;
+  valid_dlc_input.max_witness_length = 220;
+  valid_dlc_input.input_serial_id = 1;
+
+  // Create params with both regular and DLC inputs
+  PartyParams local_params;
+  local_params.fund_pubkey = LOCAL_FUND_PUBKEY;
+  local_params.change_script_pubkey = LOCAL_CHANGE_SCRIPT_PUBKEY;
+  local_params.final_script_pubkey = LOCAL_FINAL_SCRIPT_PUBKEY;
+  local_params.inputs_info = LOCAL_INPUTS_INFO;  // Regular input
+  local_params.dlc_inputs_info = {valid_dlc_input};  // DLC input
+  local_params.input_amount = LOCAL_INPUT_AMOUNT;  // Regular input amount
+  local_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  local_params.payout_serial_id = 1;
+  local_params.change_serial_id = 1;
+
+  PartyParams remote_params;
+  remote_params.fund_pubkey = REMOTE_FUND_PUBKEY;
+  remote_params.change_script_pubkey = REMOTE_CHANGE_SCRIPT_PUBKEY;
+  remote_params.final_script_pubkey = REMOTE_FINAL_SCRIPT_PUBKEY;
+  remote_params.inputs_info = REMOTE_INPUTS_INFO;  // Regular input
+  remote_params.dlc_inputs_info = {};  // No DLC inputs
+  remote_params.input_amount = REMOTE_INPUT_AMOUNT;  // Regular input amount
+  remote_params.collateral = Amount::CreateBySatoshiAmount(5000000);
+  remote_params.payout_serial_id = 2;
+  remote_params.change_serial_id = 2;
+
+  std::vector<DlcOutcome> outcomes = {
+    {Amount::CreateBySatoshiAmount(7000000),
+     Amount::CreateBySatoshiAmount(3000000)},
+    {Amount::CreateBySatoshiAmount(3000000),
+     Amount::CreateBySatoshiAmount(7000000)}};
+
+  // Should work with mixed input types
+  EXPECT_NO_THROW(
+    auto dlc_txs = DlcManager::CreateSplicedDlcTransactions(
+      outcomes, local_params, remote_params, REFUND_LOCKTIME, 2));
+
+  auto dlc_txs = DlcManager::CreateSplicedDlcTransactions(
+    outcomes, local_params, remote_params, REFUND_LOCKTIME, 2);
+
+  // Verify the transaction has both regular and DLC inputs
+  // 1 regular + 1 DLC from local, 1 regular from remote = 3 total
+  EXPECT_EQ(3, dlc_txs.fund_transaction.GetTransaction().GetTxInCount());
+  EXPECT_EQ(outcomes.size(), dlc_txs.cets.size());
+}

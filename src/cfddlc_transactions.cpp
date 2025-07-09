@@ -1000,6 +1000,10 @@ std::tuple<TxOut, uint64_t, uint64_t> DlcManager::GetChangeOutputAndFees(
       "fees and option premium.");
   }
 
+  if (total_input_amount < Amount::CreateBySatoshiAmount(546)) { // dust limit
+    throw CfdException(CfdError::kCfdIllegalArgumentError, "DLC input amounts too small");
+  }
+
   TxOut change_output(
     total_input_amount - fund_out - option_premium,
     params.change_script_pubkey);
@@ -1167,6 +1171,24 @@ DlcTransactions DlcManager::CreateSplicedDlcTransactions(
   // Clear DLC inputs from enhanced params since they're now regular inputs
   enhanced_local_params.dlc_inputs_info.clear();
   enhanced_remote_params.dlc_inputs_info.clear();
+
+  // Validate DLC inputs from both parties
+  auto validate_dlc_inputs = [](const std::vector<DlcInputInfo>& inputs, const std::string& party_name) {
+    for (const auto& dlc_input : inputs) {
+      if (dlc_input.fund_amount.GetSatoshiValue() == 0) {
+        throw CfdException(CfdError::kCfdIllegalArgumentError,
+          party_name + " DLC input amount cannot be zero");
+      }
+      // Validate that local_fund_pubkey != remote_fund_pubkey
+      if (dlc_input.local_fund_pubkey.GetHex() == dlc_input.remote_fund_pubkey.GetHex()) {
+        throw CfdException(CfdError::kCfdIllegalArgumentError,
+          party_name + " DLC input local and remote pubkeys cannot be identical");
+      }
+    }
+  };
+
+  validate_dlc_inputs(local_params.dlc_inputs_info, "Local");
+  validate_dlc_inputs(remote_params.dlc_inputs_info, "Remote");
 
   // Use the regular DLC transaction creation with enhanced parameters
   return CreateDlcTransactions(
