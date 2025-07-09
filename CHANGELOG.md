@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.25] - 2025-01-14
+
 ### Added
 - **DLC Splicing functionality** - Enable using existing DLC funding outputs as inputs to new DLCs
   - `DlcInputInfo` struct to represent existing DLC funding outputs for reuse
@@ -128,9 +130,9 @@ For changes prior to v0.0.15, please refer to the Git commit history.
 
 ## Release Notes
 
-### Upcoming v0.0.25 - DLC Splicing Release
+### v0.0.25 - DLC Splicing Release
 
-This upcoming release introduces a major new feature: **DLC Splicing**. This allows existing DLC funding outputs to be used as inputs for new DLCs, enabling dynamic fund management without requiring on-chain settlements.
+This release introduces a major new feature: **DLC Splicing**. This allows existing DLC funding outputs to be used as inputs for new DLCs, enabling dynamic fund management without requiring on-chain settlements.
 
 **Key Benefits:**
 - **Capital Efficiency**: Reuse locked funds without closing existing DLCs
