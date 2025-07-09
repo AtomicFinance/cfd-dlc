@@ -99,6 +99,43 @@ struct CFD_DLC_EXPORT DlcOutcome {
 };
 
 /**
+ * @brief Information about an existing DLC funding output to be used as input.
+ *
+ * This enables DLC splicing - using the funding output of an existing DLC
+ * as input to a new DLC, allowing for dynamic fund management.
+ */
+struct DlcInputInfo {
+  /**
+   * @brief The transaction ID of the existing DLC funding transaction.
+   */
+  Txid fund_txid;
+  /**
+   * @brief The vout index of the DLC funding output.
+   */
+  uint32_t fund_vout;
+  /**
+   * @brief The amount locked in the DLC funding output.
+   */
+  Amount fund_amount;
+  /**
+   * @brief The local party's funding public key from the existing DLC.
+   */
+  Pubkey local_fund_pubkey;
+  /**
+   * @brief The remote party's funding public key from the existing DLC.
+   */
+  Pubkey remote_fund_pubkey;
+  /**
+   * @brief The maximum witness length for spending this DLC output.
+   */
+  uint32_t max_witness_length;
+  /**
+   * @brief Randomly chosen number used to sort inputs.
+   */
+  uint64_t input_serial_id;
+};
+
+/**
  * @brief Contain a transaction input together with the maximum witness length
  * for this input.
  *
@@ -169,6 +206,12 @@ struct PartyParams {
    *
    */
   std::vector<TxInputInfo> inputs_info;
+  /**
+   * @brief A list of existing DLC funding outputs to be used as inputs (for
+   * splicing)
+   *
+   */
+  std::vector<DlcInputInfo> dlc_inputs_info;
   /**
    * @brief The total value of the provided inputs
    *
@@ -777,6 +820,86 @@ class CFD_DLC_EXPORT DlcManager {
     const std::vector<uint64_t> &fund_output_serial_ids =
       std::vector<uint64_t>());
 
+  /**
+   * @brief Create a set of DLC transactions that splice existing DLC funding
+   * outputs. This enables dynamic DLC management by using existing DLC outputs
+   * as inputs.
+   *
+   * @param outcomes the possible outcome values.
+   * @param local_params the parameters for the local party (may include DLC
+   * inputs).
+   * @param remote_params the parameters for the remote party (may include DLC
+   * inputs).
+   * @param refund_locktime the unix time or block number after which the
+   * refund transaction can be used.
+   * @param fee_rate the fee rate to compute the fees.
+   * @param option_dest (optional) destination address for the payment of the
+   * option premium
+   * @param option_premium (optional) value for the option premium
+   * @param fund_lock_time the lock time to use for the fund transaction
+   * (optional)
+   * @param cet_lock_time the lock time to use for the cet transactions
+   * (optional)
+   * @param fund_output_serial_id serial ID for the fund output sorting
+   * (optional)
+   * @return DlcTransactions a struct containing the necessary transaction
+   * to establish a DLC with spliced inputs.
+   */
+  static DlcTransactions CreateSplicedDlcTransactions(
+    const std::vector<DlcOutcome> &outcomes,
+    const PartyParams &local_params,
+    const PartyParams &remote_params,
+    uint64_t refund_locktime,
+    uint32_t fee_rate,
+    const Address &option_dest = Address(),
+    const Amount &option_premium = Amount::CreateBySatoshiAmount(0),
+    const uint64_t fund_lock_time = 0,
+    const uint64_t cet_lock_time = 0,
+    const uint64_t fund_output_serial_id = 0);
+
+  /**
+   * @brief Sign a DLC input in a funding transaction.
+   *
+   * @param fund_transaction the funding transaction to sign.
+   * @param dlc_input the DLC input information.
+   * @param local_privkey the local party's private key.
+   * @param remote_signature the remote party's signature for this input.
+   */
+  static void SignDlcFundingInput(
+    TransactionController *fund_transaction,
+    const DlcInputInfo &dlc_input,
+    const Privkey &local_privkey,
+    const ByteData &remote_signature);
+
+  /**
+   * @brief Get a raw signature for a DLC input in a funding transaction.
+   *
+   * @param fund_transaction the funding transaction to sign.
+   * @param dlc_input the DLC input information.
+   * @param privkey the private key to sign with.
+   * @return ByteData the raw signature.
+   */
+  static ByteData GetRawDlcFundingInputSignature(
+    const TransactionController &fund_transaction,
+    const DlcInputInfo &dlc_input,
+    const Privkey &privkey);
+
+  /**
+   * @brief Verify a signature for a DLC input in a funding transaction.
+   *
+   * @param fund_transaction the funding transaction.
+   * @param dlc_input the DLC input information.
+   * @param signature the signature to verify.
+   * @param pubkey the public key to verify against.
+   * @return true if the signature is valid.
+   * @return false if the signature is invalid.
+   */
+  static bool VerifyDlcFundingInputSignature(
+    const TransactionController &fund_transaction,
+    const DlcInputInfo &dlc_input,
+    const ByteData &signature,
+    const Pubkey &pubkey);
+
  private:
   /**
    * @brief Create a Fund Transaction object
@@ -906,6 +1029,43 @@ class CFD_DLC_EXPORT DlcManager {
    */
   static std::tuple<TxOut, uint64_t, uint64_t> GetBatchChangeOutputAndFees(
     const BatchPartyParams &params, uint64_t fee_rate);
+
+  /**
+   * @brief Convert DLC inputs to regular transaction inputs.
+   *
+   * @param dlc_inputs_info the DLC inputs to convert.
+   * @return std::vector<TxInputInfo> the converted transaction inputs.
+   */
+  static std::vector<TxInputInfo>
+  ConvertDlcInputsToTxInputs(const std::vector<DlcInputInfo> &dlc_inputs_info);
+
+  /**
+   * @brief Get the total weight for DLC inputs.
+   *
+   * @param dlc_inputs_info the DLC inputs to calculate weight for.
+   * @return uint32_t the total weight.
+   */
+  static uint32_t
+  GetDlcInputsWeight(const std::vector<DlcInputInfo> &dlc_inputs_info);
+
+  /**
+   * @brief Calculate the total input amount from regular and DLC inputs.
+   *
+   * @param regular_inputs the regular UTXO inputs.
+   * @param dlc_inputs the DLC funding inputs.
+   * @return Amount the total input amount.
+   */
+  static Amount CalculateTotalInputAmount(
+    const std::vector<TxInputInfo> &regular_inputs,
+    const std::vector<DlcInputInfo> &dlc_inputs);
+
+  /**
+   * @brief Create the funding script for a DLC input.
+   *
+   * @param dlc_input the DLC input information.
+   * @return Script the funding script.
+   */
+  static Script CreateDlcInputFundingScript(const DlcInputInfo &dlc_input);
 
   /**
    * @brief Computes an adaptor point from a set of messages, r_values and a
