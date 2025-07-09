@@ -1,6 +1,6 @@
 # cfd-dlc
 
-Version: 0.0.24
+Version: 0.0.25
 
 Library for creating, signing and verifying signatures for Discrete Logarithm Contracts (DLC).
 
@@ -22,7 +22,7 @@ Requires package config
 #### Manual install:
 
 ```bash
-$git clone git@github.com:cryptogarageinc/cfd.git v0.0.24
+$git clone git@github.com:atomicfinance/cfd.git v0.0.25
 $cmake -S . -B build
 $cmake -DENABLE_SHARED=on -DENABLE_JS_WRAPPER=off -DENABLE_TESTS=off -DTARGET_RPATH=/usr/local/lib -DCMAKE_BUILD_TYPE=Release --build build
 $cmake --build build --parallel 4 --config Release
@@ -30,15 +30,15 @@ $cd build && sudo make install -j 4
 ```
 
 Run the following script to cleanup the install files:
-`https://github.com/cryptogarageinc/cfd/blob/master/tools/cleanup_install_files.sh`
+`https://github.com/atomicfinance/cfd/blob/master/tools/cleanup_install_files.sh`
 
 #### Using released package (faster):
 
-Find the appropriate release for you platform [here](https://github.com/cryptogarageinc/cfd/releases)
+Find the appropriate release for you platform [here](https://github.com/atomicfinance/cfd/releases)
 
 ```bash
-wget https://github.com/cryptogarageinc/cfd/releases/download/v0.0.24/cfd-v0.0.24-{yourplatform}.zip
-unzip -d / cfd-v0.0.24-{yourplatform}.zip
+wget https://github.com/atomicfinance/cfd/releases/download/v0.0.25/cfd-v0.0.25-{yourplatform}.zip
+unzip -d / cfd-v0.0.25-{yourplatform}.zip
 ```
 
 2. build cfd-dlc (on clean state)

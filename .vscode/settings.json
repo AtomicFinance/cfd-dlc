@@ -1,4 +1,9 @@
 {
+  "markdownlint.config": {
+    "MD032": false,
+    "MD022": false,
+    "MD024": false
+  },
   "files.associations": {
     "vector": "cpp",
     "__bit_reference": "cpp",
