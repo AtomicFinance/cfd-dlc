@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Complete signing workflow for multisig DLC inputs (`SignDlcFundingInput`, `GetRawDlcFundingInputSignature`, `VerifyDlcFundingInputSignature`)
   - Support for three splicing scenarios:
     - **Splice-in**: Add additional funds to create larger DLC
-    - **Splice-out**: Remove funds to create smaller DLC  
+    - **Splice-out**: Remove funds to create smaller DLC
     - **DLC transition**: Change oracle, terms, or participants while reusing funds
 - **Comprehensive input validation** for DLC splicing
   - Zero amount validation for DLC inputs
@@ -146,7 +146,7 @@ This release introduces a major new feature: **DLC Splicing**. This allows exist
 
 **Security:**
 - Comprehensive input validation prevents invalid transactions
-- Proper signature ordering ensures deterministic multisig behavior  
+- Proper signature ordering ensures deterministic multisig behavior
 - Dust limit enforcement prevents uneconomical transactions
 
 This release significantly enhances the DLC protocol's flexibility and usability for dynamic contract management scenarios.
