@@ -2022,3 +2022,82 @@ TEST(DlcManagerTest, CreateSplicedDlcTransactionsMixedInputs) {
   EXPECT_EQ(3, dlc_txs.fund_transaction.GetTransaction().GetTxInCount());
   EXPECT_EQ(outcomes.size(), dlc_txs.cets.size());
 }
+
+TEST(DlcManager, VerifyCetAdaptorSignatureFromRustDebugValues) {
+  // Test using exact values from Rust debug output to compare verification
+  // behavior
+
+  // CET 0 values from Rust debug output
+  std::string adaptor_sig_hex =
+    "02fea46e867a0d6a4fafc75635dd53332c0035c2acb1b809bd7ad62d593efd87630256e31c"
+    "c6f2b03256d83ce98886b5e34cd8c7cdb927bb2eb8bcd2768eaa178ad9d87bb5219767685a"
+    "c7e7bff3bf593873fe5fc2e3c325012c1d1e0d6d1cb1842a47d33b0ef30f842655a574eab0"
+    "a1dadc47fe4c56083a932918483c9f32a5637ca00a149de313205115193476355b917c466d"
+    "de09a07c969d1856f4d4f82541d7";
+  std::string cet_hex =
+    "020000000180b9c08a4af5f8c021849aafb969d8cbe253e55f940577a9986241d0f9654bbe"
+    "0000000000feffffff0140420f0000000000160014e107923327a30c38109bab208300bbac"
+    "e0aeed55ff879368";
+  std::string accept_fund_pubkey_hex =
+    "022580f94dee6c522fa4f809cf8ae2541f86bafc7791a40390bee116db5c626210";
+  std::string funding_script_pubkey_hex =
+    "5221022580f94dee6c522fa4f809cf8ae2541f86bafc7791a40390bee116db5c6262102102"
+    "352bfe5e79740ef7a21b95c3197aa0e8f70a3bb1febdf6d3e1631b51596d7c1552ae";
+  uint64_t fund_output_value = 1001470;
+  std::string oracle_pubkey_hex =
+    "e390bedbfc03ff63da5df113e9cef1bfe0e70dbefa94e4a4da1ddf8085ac57b0";
+  std::string oracle_nonce_hex =
+    "162e7db03aff9bdc96995ba9ac3f39b366a52b97a02eec0e0be728d2d14afc37";
+  std::string message_hash_hex =
+    "268ad70eb5bc4737a2ae28162cbca30118cc94520e49ef1ac5f72c85d3f2caa9";
+
+  // Parse inputs
+  ByteData adaptor_sig_bytes = ByteData(adaptor_sig_hex);
+  // Adaptor signature is 162 bytes: 65 bytes signature + 97 bytes proof
+  ASSERT_EQ(162, adaptor_sig_bytes.GetDataSize());
+  cfd::core::AdaptorSignature adaptor_sig(
+    ByteData(adaptor_sig_hex.substr(0, 130)));  // First 65 bytes
+  cfd::core::AdaptorProof adaptor_proof(
+    ByteData(adaptor_sig_hex.substr(130)));  // Last 97 bytes
+
+  cfd::TransactionController cet = cfd::TransactionController(cet_hex);
+  Pubkey accept_pubkey = Pubkey(accept_fund_pubkey_hex);
+  Script funding_script = Script(funding_script_pubkey_hex);
+  Amount fund_amount = Amount::CreateBySatoshiAmount(fund_output_value);
+  SchnorrPubkey oracle_pubkey = SchnorrPubkey(oracle_pubkey_hex);
+  SchnorrPubkey oracle_r_value = SchnorrPubkey(oracle_nonce_hex);
+  ByteData256 message_hash = ByteData256(message_hash_hex);
+
+  std::cout << "=== C++ DEBUG VALUES FOR CET 0 ===" << std::endl;
+  std::cout << "adaptor_sig: " << adaptor_sig_hex << std::endl;
+  std::cout << "cet_txid: " << cet.GetTransaction().GetTxid().GetHex()
+            << std::endl;
+  std::cout << "cet_hex: " << cet_hex << std::endl;
+  std::cout << "accept_fund_pubkey: " << accept_fund_pubkey_hex << std::endl;
+  std::cout << "funding_script_pubkey: " << funding_script_pubkey_hex
+            << std::endl;
+  std::cout << "fund_output_value: " << fund_output_value << std::endl;
+  std::cout << "oracle_pubkey: " << oracle_pubkey_hex << std::endl;
+  std::cout << "oracle_nonce: " << oracle_nonce_hex << std::endl;
+  std::cout << "message_hash: " << message_hash_hex << std::endl;
+
+  // Use public verification method instead of accessing private
+  // ComputeAdaptorPoint
+  std::vector<ByteData256> msgs = {message_hash};
+  std::vector<SchnorrPubkey> r_values = {oracle_r_value};
+
+  // Create AdaptorPair for verification
+  cfd::core::AdaptorPair adaptor_pair = {adaptor_sig, adaptor_proof};
+
+  // Perform verification using VerifyCetAdaptorSignature
+  bool verification_result = DlcManager::VerifyCetAdaptorSignature(
+    adaptor_pair, cet, accept_pubkey, oracle_pubkey, r_values, funding_script,
+    fund_amount, msgs);
+
+  std::cout << "verification_result: "
+            << (verification_result ? "PASSED" : "FAILED") << std::endl;
+  std::cout << "=== END C++ DEBUG VALUES FOR CET 0 ===" << std::endl;
+
+  // The test expects this to pass since Rust verification passed
+  EXPECT_TRUE(verification_result);
+}
